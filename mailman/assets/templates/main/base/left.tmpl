@@ -1,0 +1,11 @@
+<div class="sidebar-left-container">
+    <div class="sidebar-left">
+        {{ $mode := mode }}
+        <li class="sidebar-logo">
+            <a href="{{ url "mailmgmt" }}">
+                <img src="{{$mode.LogoURL}}" alt="{{ T "Oops!" }}">
+            </a>
+        </li>
+        <a href="{{ url "mailmgmt:emails" }}" class="menu-item">{{ T "Emails" }}</a>
+    </div>
+</div>

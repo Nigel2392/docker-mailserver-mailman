@@ -1,0 +1,19 @@
+<section class="navbar-container">
+    {{ $mode := mode }}
+    <p id="mode-switch">{{ T "%s Mode" $mode.Opposite }}</p>
+    <div class="navbar">
+        <div class="navbar-item navbar-left">
+            <!-- <a href="{{ url "mailmgmt" }}"> -->
+                <!-- <img src="{{$mode.LogoURL}}" alt="{{ T "Oops!" }}" class="navbar-image"> -->
+            <!-- </a> -->
+        </div>
+        <div class="navbar-item navbar-center">
+
+        </div>
+        <div class="navbar-item navbar-right">
+            <!-- <div class="navbar-links"> -->
+                <!-- <a href="{{ url "mailmgmt:emails" }}" class="navbar-link">{{ T "Emails" }}</a> -->
+            <!-- </div> -->
+        </div>
+    </div>
+</section>

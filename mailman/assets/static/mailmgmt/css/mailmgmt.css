@@ -1,0 +1,96 @@
+.mailmgmt-list {
+    max-width: 1200px;
+    padding: 1rem 2rem;
+    padding-bottom: 0rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.mailmgmt-list-item {
+    display: flex;
+    flex-direction: row;
+    padding-left: 2rem;
+    padding-right: 0;
+    border-radius: 10px;
+    border: 1px solid var(--color-primary-accent);
+    overflow: hidden;
+    gap: 0.5rem;
+    transition: box-shadow 0.1s ease-in-out;
+    box-shadow: 1px 1px 1px rgba(var(--color-primary-rgb),0.3);
+}
+.mailmgmt-list-item:hover {
+    box-shadow: 3px 3px 3px rgba(var(--color-primary-rgb),0.3);
+}
+.mailmgmt-list-item-data {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.mailmgmt-list-item-header {
+    letter-spacing: 0.015rem;
+    padding-top: 0.5rem;
+    font-size: 1.4rem;
+}
+.mailmgmt-list-item-header .header-badge {
+    font-size: 0.7rem;
+    border-radius: 4px;
+    padding: 0.125rem 0.375rem;
+    display: inline-block;
+    box-shadow: 1px 2px 3px rgba(var(--color-primary-rgb),0.3);
+    background-color: rgba(var(--color-primary-accent-rgb), 0.2);
+    vertical-align:top;
+}
+.mailmgmt-list-item-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.325rem;
+}
+.mailmgmt-email-alias {
+    padding: 0.125rem 0.375rem;
+    background-color: rgba(var(--color-primary-accent-rgb), 0.2);
+    box-shadow: 1px 2px 3px rgba(var(--color-primary-rgb),0.3);
+    border-radius: 4px;
+}
+.mailmgmt-list-item-footer {
+
+}
+.mailmgmt-progress {
+
+}
+.mailmgmt-list-item-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-self: center;
+    padding-left: 2rem;
+}
+.mailmgmt-action-button {
+    border: none;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    font-size: 1rem;
+    height: 100%;
+}
+.mailmgmt-list-item-actions:has(.mailmgmt-action-button:hover) .mailmgmt-action-button:not(:hover) {
+    padding: 0 0.25rem;
+    transition: padding 0.1s linear;
+}
+.mailmgmt-action-button:hover {
+    padding: 0 1rem;
+    transition: padding 0.1s linear;
+}
+.mailmgmt-action-icon {
+    width: 1.5rem;
+    aspect-ratio: 1;
+}
+.mailmgmt-action-change {
+
+}
+.mailmgmt-action-alias {
+
+}
+.mailmgmt-action-delete {
+
+}

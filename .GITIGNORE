@@ -1,0 +1,8 @@
+certs/
+db/
+log/
+migrations/
+vendor/
+test/
+out.log
+setup.example.txt

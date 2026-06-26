@@ -1,0 +1,61 @@
+{{define "base"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="{{ static "main/css/base.css" }}">
+
+        <title>{{block "title" .}}MailMan{{end}}</title>
+        <link rel="icon" href="{{ block "logourl" .}}{{ static "mailman.png" }}{{end}}" type="image/png">
+        
+        {{ $mode := mode }}
+
+        <style>
+
+
+            :root {
+                --color-primary-rgb: {{$mode.Primary}};
+                --color-primary-accent-rgb: {{$mode.PrimaryAccent}};
+                --color-secondary-rgb: {{$mode.Secondary}};
+                --main-color-rgb: {{$mode.Header}};
+                --header-text-color-rgb: {{$mode.HeaderText}};
+
+                --color-primary: rgb(var(--color-primary-rgb));
+                --color-primary-accent: rgb(var(--color-primary-accent-rgb));
+                --color-secondary: rgb(var(--color-secondary-rgb));
+                --main-color: rgb(var(--main-color-rgb));
+                --header-text-color: rgb(var(--header-text-color-rgb));
+            }
+        </style>
+        {{block "css" .}}{{end}}
+    </head>
+    <body id="body">
+
+        {{if .Data.messages}}
+            {{template "messages" . }}
+        {{end}}
+
+        {{template "navbar.tmpl" .}}
+
+        {{block "root" .}}
+            <div class="main text">
+                <div class="main-left">
+                    {{block "left" .}} {{template "left.tmpl" .}} {{end}}
+                </div>
+                <div class="main-center">
+                    {{block "content" .}}{{end}}
+                </div>
+            </div>
+        {{end}}
+
+        <script src="{{ static "main/js/main.js" }}" type="text/javascript"></script>
+        
+        {{block "js" .}}
+        
+        {{end}}
+    </body>
+</html>
+{{end}}
