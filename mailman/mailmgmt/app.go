@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	django "github.com/Nigel2392/go-django/src"
@@ -14,6 +15,7 @@ import (
 
 const (
 	MAILSERVER_CONTAINER_NAME = "mailmgmt.MAILSERVER_CONTAINER_NAME"
+	EMAIL_REGEX               = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
 )
 
 var CONFIG *MailManagementConfig
@@ -91,4 +93,16 @@ func (c *MailManagementConfig) CommandSetup(ctx context.Context) *SetupCommand {
 	}
 	setup.args = append(setup.args, "setup")
 	return setup
+}
+
+func (c *MailManagementConfig) InspectDockerMailServer(ctx context.Context, size bool) (client.ContainerInspectResult, error) {
+	return c.Docker.ContainerInspect(
+		ctx, c.MailServerContainerName, client.ContainerInspectOptions{Size: size},
+	)
+}
+
+var _matchEmail = regexp.MustCompile(EMAIL_REGEX)
+
+func IsValidEmail(email string) bool {
+	return _matchEmail.MatchString(email)
 }

@@ -55,6 +55,11 @@ func main() {
 		MAILMAN_LOG       = GetEnv("MAILMAN_LOG", "./log/mailman.log")
 		MAILMAN_ERROR_LOG = GetEnv("MAILMAN_ERROR_LOG", "./log/mailman.error.log")
 
+		MAILMAN_SIEVE_TEMPLATE = GetEnv(
+			"MAILMAN_SIEVE_TEMPLATE",
+			"./templates/tmp/docker-mailserver/before.dovecot.sieve.tmpl",
+		)
+
 		MAILMAN_ADMIN_EMAIL = GetEnv("MAILMAN_ADMIN_EMAIL")
 		MAILMAN_ADMIN_PASS  = GetEnv("MAILMAN_ADMIN_PASSWORD")
 	)
@@ -110,6 +115,7 @@ func main() {
 			auth.APPVAR_AUTH_EMAIL_LOGIN:       true,
 			migrator.APPVAR_MIGRATION_DIR:      "./migrations",
 			mailmgmt.MAILSERVER_CONTAINER_NAME: GetEnv("MAILSERVER_CONTAINER_NAME"),
+			sieve.MAILMAN_SIEVE_TEMPLATE:       MAILMAN_SIEVE_TEMPLATE,
 		})),
 		django.AppLogger(&logger.Logger{
 			Level:       logger.DBG,

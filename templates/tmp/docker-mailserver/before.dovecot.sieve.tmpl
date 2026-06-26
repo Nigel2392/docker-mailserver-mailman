@@ -1,0 +1,35 @@
+require ["fileinto", "copy"{{ if (gt (len .BannedEmails) 0) }}, "reject"{{ end }}{{ if (gt (len .Vacations) 0) }}, "vacation"{{ end }}];
+
+# --- Banned Emails ---
+{{ range $ban := .BannedEmails }}
+if address :is "From" "{{ $ban.Email }}" {
+    {{ if eq $ban.Action "discard" -}}
+    discard;
+    {{- else -}}
+    reject "Message rejected: Sender is blocked.";
+    {{- end }}
+    stop;
+}
+{{ end }}
+
+# --- Forwarded Emails ---
+{{ range $fwd := .Forwards }}
+if envelope :is "to" "{{ $fwd.Source }}" {
+    redirect "{{ $fwd.Destination }}";
+    {{ if $fwd.KeepCopy -}}
+    keep;
+    {{- end }}
+}
+{{ end }}
+
+# --- Vacation Rules ---
+{{ range $vac := .Vacations }}
+{{ if $vac.Enabled }}
+if envelope :is "to" "{{ $vac.ForEmail }}" {
+    vacation :days {{ $vac.Days }} :subject "{{ $vac.Subject }}" text:
+{{ $vac.Message }}
+.
+;
+}
+{{ end }}
+{{ end }}

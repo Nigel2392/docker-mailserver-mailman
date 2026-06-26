@@ -100,9 +100,7 @@ func (c Command) Exec() (out, errOut string, err error) {
 		return "", "", err
 	}
 
-	mailserver, err := c.s.c.Docker.ContainerInspect(
-		c.s.ctx, c.s.c.MailServerContainerName, client.ContainerInspectOptions{},
-	)
+	mailserver, err := c.s.c.InspectDockerMailServer(c.s.ctx, false)
 	if err != nil {
 		return "", "", err
 	}

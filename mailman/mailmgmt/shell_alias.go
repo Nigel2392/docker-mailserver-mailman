@@ -2,6 +2,7 @@ package mailmgmt
 
 import (
 	"bufio"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -38,7 +39,9 @@ func (m AliasCommand) Delete(alias, target string) error {
 	return err
 }
 
-var aliasListRegex = regexp.MustCompile(`\* ([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+) ([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$`)
+var _matchAliasListRegex = regexp.MustCompile(fmt.Sprintf(
+	`\* %s %s$`, EMAIL_REGEX, EMAIL_REGEX,
+))
 
 // Return a map of target -> []aliases
 func (m AliasCommand) Map() (map[string][]string, error) {
@@ -57,7 +60,7 @@ func (m AliasCommand) Map() (map[string][]string, error) {
 			continue
 		}
 
-		var matches = aliasListRegex.FindStringSubmatch(line)
+		var matches = _matchAliasListRegex.FindStringSubmatch(line)
 		if len(matches) < 3 {
 			continue // not an alias line
 		}
@@ -97,7 +100,7 @@ func (m AliasCommand) List() ([][2]string, error) {
 			continue
 		}
 
-		var matches = aliasListRegex.FindStringSubmatch(line)
+		var matches = _matchAliasListRegex.FindStringSubmatch(line)
 		if len(matches) < 3 {
 			continue // not an alias line
 		}

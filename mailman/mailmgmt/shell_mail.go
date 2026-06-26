@@ -2,12 +2,14 @@ package mailmgmt
 
 import (
 	"bufio"
-	"encoding/csv"
 	"errors"
 	"fmt"
+	"net/mail"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Nigel2392/go-django/src/core/logger"
 )
 
 type MailCommand struct {
@@ -67,8 +69,8 @@ type ListedAddress struct {
 	Aliases        []string
 }
 
-var emailListRegex = regexp.MustCompile(`\* ([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+) \( ([\w\.\~]+) \/ ([\w\.\~]+) \) \[(\d+)%\]`)
-var emailListAliasRegex = regexp.MustCompile(`\[\s*aliases\s*->\s+([^\]]*)\]`)
+var _matchEmailListRegex = regexp.MustCompile(fmt.Sprintf(`\* %s \( ([\w\.\~]+) \/ ([\w\.\~]+) \) \[(\d+)%%\]`, EMAIL_REGEX))
+var _matchEmailListAliasRegex = regexp.MustCompile(`\[\s*aliases\s*->\s+([^\]]*)\]`)
 
 func (m MailCommand) List() ([]ListedAddress, error) {
 	src, _, err := m.CommandList().Exec()
@@ -86,32 +88,25 @@ func (m MailCommand) List() ([]ListedAddress, error) {
 			continue
 		}
 
-		var matches = emailListRegex.FindStringSubmatch(line)
+		var matches = _matchEmailListRegex.FindStringSubmatch(line)
 		if len(matches) < 5 {
-			matches = emailListAliasRegex.FindStringSubmatch(line)
+			matches = _matchEmailListAliasRegex.FindStringSubmatch(line)
 			if len(matches) < 2 {
-				return nil, fmt.Errorf("no alias block found")
+				continue
+				// return nil, fmt.Errorf("no alias block found")
 			}
 
-			reader := csv.NewReader(
-				strings.NewReader(
-					strings.TrimSpace(matches[1]),
-				),
-			)
-			reader.TrimLeadingSpace = true // ignore spaces after commas
-			reader.LazyQuotes = true       // be lenient with quotes
-
-			records, err := reader.Read()
+			addrs, err := mail.ParseAddressList(matches[1])
 			if err != nil {
-				return nil, fmt.Errorf("csv parse error: %w", err)
+				logger.Warnf("failed to parse adress from text: %s", matches[1])
+				continue
 			}
 
 			// 3. Trim any remaining whitespace and filter out empty fields
-			var aliases = make([]string, 0, len(records))
-			for _, field := range records {
-				field = strings.TrimSpace(field)
-				if field != "" {
-					aliases = append(aliases, field)
+			var aliases = make([]string, 0, len(addrs))
+			for _, addr := range addrs {
+				if addr.Address != "" {
+					aliases = append(aliases, addr.Address)
 				}
 			}
 

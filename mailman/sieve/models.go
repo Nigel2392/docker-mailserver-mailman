@@ -26,6 +26,27 @@ func (b *BannedEmail) FieldDefs() attrs.Definitions {
 	).WithTableName("banned_email")
 }
 
+type BannedDomain struct {
+	Domain string
+	Action string
+}
+
+func (b *BannedDomain) FieldDefs() attrs.Definitions {
+	return attrs.Define[attrs.Definer, attrs.Field](b,
+		attrs.NewField(b, "Domain", &attrs.FieldConfig{
+			Label:    trans.S("Domain"),
+			HelpText: trans.S("e.g., spam.com (do not include the @ symbol)"),
+			Null:     false,
+			Blank:    false,
+		}),
+		attrs.NewField(b, "Action", &attrs.FieldConfig{
+			Label: trans.S("Action"),
+			Null:  false,
+			Blank: false,
+		}),
+	).WithTableName("banned_domain")
+}
+
 type ForwardedEmail struct {
 	Source      *drivers.Email
 	Destination *drivers.Email
@@ -83,35 +104,3 @@ func (b *VacationRule) FieldDefs() attrs.Definitions {
 		}),
 	).WithTableName("vacation_email_rule")
 }
-
-type SieveConfigData struct {
-	BannedEmails []string
-	BannedAction string
-	Forwards     []ForwardedEmail
-	Vacations    []VacationRule
-}
-
-const sieveTemplate = `require ["envelope"{{if .Vacations}}, "vacation"{{end}}, "reject"];
-
-{{ if .BannedEmails }}
-if address :is "From" [{{ range $i, $e := .BannedEmails }}{{ if (gt $i 0) }}, {{ end }}"{{ $e }}"{{ end }}] {
-    {{ if eq .BannedAction "discard" }}discard;{{ else }}reject "Message rejected: Sender is not allowed.";{{ end }}
-    stop;
-}
-{{ end }}
-
-{{range $fwd := $.Forwards}}
-if envelope :is "to" "{{$fwd.Source}}" {
-    redirect "{{$fwd.Destination}}";
-    {{if $fwd.KeepCopy}}keep;{{end}}
-}
-{{end}}
-
-{{range $vac := $.Vacations}}
-{{if $vac.Enabled}}
-if envelope :is "to" "{{$vac.ForEmail}}" {
-    vacation :days {{$vac.Days}} :subject "{{$vac.Subject}}" "{{$vac.Message}}";
-}
-{{end}}
-{{end}}
-`

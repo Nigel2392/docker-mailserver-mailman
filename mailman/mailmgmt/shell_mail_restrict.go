@@ -2,7 +2,6 @@ package mailmgmt
 
 import (
 	"bufio"
-	"fmt"
 	"strings"
 )
 
@@ -85,10 +84,12 @@ func makeRestrictionResultList(src string) ([]RestrictionResult, error) {
 			flds = append(flds, fld)
 		}
 		if len(flds) < 2 {
-			return nil, fmt.Errorf("Line %d does not have enough fields: %q", idx, line)
+			continue
+			// return nil, fmt.Errorf("Line %d does not have enough fields: %q", idx, line)
 		}
 		if len(flds) > 2 {
-			return nil, fmt.Errorf("Line %d has too many fields: %q", idx, line)
+			continue
+			// return nil, fmt.Errorf("Line %d has too many fields: %q", idx, line)
 		}
 		resList = append(resList, RestrictionResult{
 			Address: flds[0],
