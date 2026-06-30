@@ -1,0 +1,22 @@
+services:
+  mailman_mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mailserver
+    # Provide the FQDN of your mail server here (Your DNS MX record should point to this value)
+    hostname: mail.example.com
+    ports:
+      - "25:25"
+      - "993:993"
+    volumes:
+      - mailman_mailserver_data:/var/mail/
+      - mailman_mailserver_state:/var/mail-state/
+      - mailman_mailserver_config:/tmp/docker-mailserver/
+    environment:
+      - ENABLE_RSPAMD=1
+      - ENABLE_CLAMAV=1
+      - ENABLE_FAIL2BAN=1
+
+volumes:
+  mailman_mailserver_data:
+  mailman_mailserver_state:
+  mailman_mailserver_config:

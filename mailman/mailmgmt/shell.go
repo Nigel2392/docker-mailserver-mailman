@@ -107,11 +107,15 @@ func (c Command) Exec() (out, errOut string, err error) {
 
 	logger.Infof("Executing command: %q", c.String())
 
+	if !mailserver.Container.State.Running {
+		return "", "", ErrNotRunning.Wrapf("container %q is not running.", mailserver.Container.ID)
+	}
+
 	execStart, err := c.s.c.Docker.ExecCreate(
 		c.s.ctx,
 		mailserver.Container.ID,
 		client.ExecCreateOptions{
-			Cmd:          c.s.args,
+			Cmd:          []string{"bash", "-c", strings.Join(c.s.args, " ")},
 			AttachStdout: true,
 			AttachStderr: true,
 		},

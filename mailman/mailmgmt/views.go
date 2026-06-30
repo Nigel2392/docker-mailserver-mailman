@@ -19,24 +19,3 @@ func (c *MailManagementConfig) ViewIndex(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
-
-func (c *MailManagementConfig) ViewEmails(w http.ResponseWriter, r *http.Request) {
-	//	if !permissions.HasPermission(r, "mailmgmt.view_addrs") {
-	//
-	//	}
-
-	var context = ctx.RequestContext(r)
-
-	emails, err := SetupCtx(r.Context()).Email().List()
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	context.Set("emails", emails)
-
-	if err := tpl.FRender(w, context, "main", "mailmgmt/emails.tmpl"); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-}

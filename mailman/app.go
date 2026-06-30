@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"html/template"
 	"net/http"
 	"time"
@@ -16,16 +15,15 @@ import (
 	"github.com/Nigel2392/mux"
 )
 
-//go:embed assets/**
-var assetsFS embed.FS
+func init() {
+	for _, color := range modes {
+		_modes[color.Name] = color
+	}
+}
 
 func NewAppConfig() django.AppConfig {
 	var app = apps.NewAppConfig("main")
-
-	var (
-		tplFS    = filesystem.Sub(assetsFS, "assets/templates")
-		staticFS = filesystem.Sub(assetsFS, "assets/static")
-	)
+	var tplFS, staticFS = initAppFS()
 
 	app.Routing = func(m mux.Multiplexer) {
 		m.Use(ModeMiddleware)
@@ -43,11 +41,13 @@ func NewAppConfig() django.AppConfig {
 		AppName: "main",
 		FS:      tplFS,
 		Bases: []string{
-			"main/base/base.tmpl",
+			"main/base/skeleton.tmpl",
 			"main/base/left.tmpl",
 			"main/base/right.tmpl",
 			"main/base/navbar.tmpl",
 			"main/base/messages.tmpl",
+
+			"mailmgmt/partials/list_form.tmpl",
 		},
 		Matches: filesystem.MatchOr(
 			filesystem.MatchAnd(
@@ -89,8 +89,8 @@ type boundColors struct {
 	r *http.Request
 }
 
-func (bc boundColors) Name() string {
-	return bc.Colors.Name(bc.r.Context())
+func (bc boundColors) Label() string {
+	return bc.Colors.Label(bc.r.Context())
 }
 
 func (bc boundColors) Opposite() string {
@@ -98,32 +98,42 @@ func (bc boundColors) Opposite() string {
 }
 
 type Colors struct {
-	Name          func(context.Context) string
+	Name          string
+	Label         func(context.Context) string
 	Opposite      func(context.Context) string
 	Primary       string
 	PrimaryAccent string
 	Secondary     string
+	StandOut      string
+	BorderStyle   string // dotted, solid, dashed
 	Header        string
 	HeaderText    string
 	LogoURL       string
 }
 
-var modes = map[string]Colors{
-	"light": {
-		Name:          trans.S("Light"),
+var _modes = make(map[string]Colors)
+var modes = []Colors{
+	{
+		Name:          __light_mode,
+		Label:         trans.S("Light"),
 		Opposite:      trans.S("Dark"),
+		BorderStyle:   "solid",
 		Primary:       "27, 27, 27",
 		PrimaryAccent: "20, 163, 156",
+		StandOut:      "20, 163, 156",
 		Secondary:     "255, 255, 255",
 		Header:        "20, 163, 156",
 		HeaderText:    "255, 255, 255",
 		LogoURL:       "/static/mailman.png",
 	},
-	"dark": {
-		Name:          trans.S("Dark"),
+	{
+		Name:          "dark",
+		Label:         trans.S("Dark"),
 		Opposite:      trans.S("Light"),
+		BorderStyle:   "dotted",
 		Primary:       "255, 255, 255",
-		PrimaryAccent: "165, 165, 165",
+		PrimaryAccent: "124, 124, 124",
+		StandOut:      "20, 163, 156",
 		Secondary:     "27, 27, 27",
 		Header:        "27, 27, 27",
 		HeaderText:    "255, 255, 255",
@@ -138,7 +148,7 @@ const __light_mode = "light"
 func modeFromContext(r *http.Request) *boundColors {
 	var mode, ok = r.Context().Value(modeContextKey{}).(Colors)
 	if !ok {
-		return &boundColors{modes[__light_mode], r}
+		return &boundColors{_modes[__light_mode], r}
 	}
 	return &boundColors{mode, r}
 }
@@ -157,7 +167,7 @@ func ModeMiddleware(next mux.Handler) mux.Handler {
 		}
 
 		if modeCookie != nil {
-			var mode, ok = modes[modeCookie.Value]
+			var mode, ok = _modes[modeCookie.Value]
 			if !ok {
 				goto lightMode
 			}
@@ -169,7 +179,7 @@ func ModeMiddleware(next mux.Handler) mux.Handler {
 		}
 
 	lightMode:
-		r = modeToContext(r, modes[__light_mode])
+		r = modeToContext(r, _modes[__light_mode])
 
 		// Set the visual mode cookie
 		http.SetCookie(w, &http.Cookie{

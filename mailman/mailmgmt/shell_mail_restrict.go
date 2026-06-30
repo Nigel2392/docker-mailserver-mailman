@@ -3,6 +3,8 @@ package mailmgmt
 import (
 	"bufio"
 	"strings"
+
+	"al.essio.dev/pkg/shellescape"
 )
 
 type BasicRestrictCommand struct {
@@ -11,13 +13,13 @@ type BasicRestrictCommand struct {
 
 func (m BasicRestrictCommand) CommandSend(email string) *Command {
 	return &Command{
-		s: m.s.Arg("send", email),
+		s: m.s.Arg("send", shellescape.Quote(email)),
 	}
 }
 
 func (m BasicRestrictCommand) CommandReceive(email string) *Command {
 	return &Command{
-		s: m.s.Arg("receive", email),
+		s: m.s.Arg("receive", shellescape.Quote(email)),
 	}
 }
 

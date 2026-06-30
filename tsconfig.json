@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "module": "es6",
+    "target": "es6",
+    "allowJs": true,
+    "moduleResolution": "bundler",
+    "esModuleInterop": true
+  },
+  "include": [
+    "static_src/**/*.ts",
+    "static_src/**/*.js"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

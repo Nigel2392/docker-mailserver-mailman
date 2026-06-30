@@ -1,0 +1,57 @@
+{{ define "add" }}
+    {{ if .Get "valid" }}
+        <section>
+            <p class="accented">{{ "E-mail added successfully." }}</p>
+        </section>
+    {{ else }}
+
+    {{ $mailmgmt_url := (url "mailmgmt:htmx:emails:add") }}
+    <form action="{{ $mailmgmt_url }}" method="post" autocomplete="off" data-form-modal-target="form" hx-post="{{ $mailmgmt_url }}" hx-trigger="submit" hx-target="#{{ .Get "view.modal.id" }}" hx-swap="outerHTML">
+        {{ csrf_field }}
+
+        {{ $errors := .Data.form.ErrorList }}
+        {{ if (gt (len $errors) 0) }}
+            <ul class="error-list">
+                {{ range $Error := $errors }}
+                    <li class="error"><p>{{ $Error }}</p></li>
+                {{ end }}
+            </ul>
+        {{ end }}
+
+        {{ range $Field := .Data.form.Fields }}
+            <div class="form-group">
+                <div class="form-label">
+                    {{ .Label }}
+                </div>
+            
+                {{ $errors := .Errors }}
+                {{ if gt (len $errors) 0 }}
+                    <div class="field__errors">
+                        <ul>
+                            {{ range $err := $errors }}
+                                <li class="field__error">{{ $err }}</li>
+                            {{ end }}
+                        </ul>
+                    </div>
+                {{ end }}
+                                
+                <div class="form-field">
+                    {{ .Field }}
+                </div>
+
+                {{ $help := .HelpText }}
+                {{ if gt (len $help) 0 }}
+                    <div class="form-help">
+                        {{ $help }}
+                    </div>
+                {{ end }}
+
+            </div>
+        {{ end }}
+        
+        <div class="w-100 d-flex">
+            <input type="submit" class="btn btn-standout" value="{{ T "Submit" }}">
+        </div>
+    </form>
+    {{ end }}
+{{ end }}

@@ -1,22 +1,206 @@
-.mailmgmt-list {
-    max-width: 1200px;
-    padding: 1rem 2rem;
-    padding-bottom: 0rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+.mailmgmt-disabled {
+    opacity: 0.5;
 }
+
+.mailmgmt-disabled button,
+.mailmgmt-disabled a,
+.mailmgmt-disabled input,
+.mailmgmt-disabled textarea,
+.mailmgmt-disabled select {
+    cursor: not-allowed;
+}
+#list-body {
+    transition: opacity 200ms ease-in-out;
+    opacity: 1;
+}
+
+/* The state HTMX triggers while loading */
+#list-body.htmx-request {
+    opacity: 0.5; /* Greys out the table */
+    pointer-events: none; /* Prevents users from clicking buttons/checkboxes while loading */
+}
+.mailmgmt-list {
+    --b: 1px var(--border-style) var(--color-primary-accent);
+    /* max-width: 1400px; */
+    padding: 1rem 2rem;
+    padding-bottom: 1rem;
+    display: flex;
+    height: 100%;
+    font-size: 1rem !important;
+    flex-direction: column;
+}
+.mailmgmt-list-toolbar {
+    width: 100%;
+    height: 2.75rem;
+    margin-bottom: 0.5rem;
+    border: var(--b);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+.mailmgmt-list-toolbar-limit {
+    max-width: 3rem;
+    padding: 0.375rem 0;
+}
+.mailmgmt-list-search {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+    width: min(15rem, 100%);
+}
+.mailmgmt-list-toolbar input[type="text"],
+.mailmgmt-list-toolbar select {
+    margin: 0;
+    border-radius: 0;
+    border: unset;
+    border-right: var(--b);
+    display: flex;
+    height: 100%;
+    width: 100%;
+}
+.mailmgmt-list-toolbar button,
+.mailmgmt-list-toolbar .button {
+    border: 0;
+    border-right: var(--b);
+    width: auto;
+    height: 100%;
+    aspect-ratio: 1;
+    cursor: pointer;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    color: var(--color-primary-accent);
+    background-color: transparent;
+}
+.mailmgmt-list-toolbar .mailmgmt-list-actions button,
+.mailmgmt-list-toolbar .mailmgmt-list-actions .button {
+    border-right: 0;
+    border-left: var(--b);
+}
+.labeled-action,
+.mailmgmt-list-actions {
+    margin-left: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.275rem;
+}
+
+.mailmgmt-list-table-wrapper {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: var(--b);
+}
+table.mailmgmt-list-table {
+    border: 0;
+    border-spacing: 0;
+    border-collapse: collapse;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    table-layout: fixed;
+}
+table.mailmgmt-list-table th:first-child input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+table.mailmgmt-list-table td:first-child input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+table.mailmgmt-list-table th,
+table.mailmgmt-list-table td {
+    height: 2rem;
+    padding: 0;
+    margin: 0;
+}
+table.mailmgmt-list-table th:nth-child(1),
+table.mailmgmt-list-table td:nth-child(1) {
+    text-align: center;
+    width: 3rem;
+}
+table.mailmgmt-list-table th:nth-child(2),
+table.mailmgmt-list-table td:nth-child(2) {
+    width: 25%;
+}
+
+table.mailmgmt-list-table td:nth-child(2) {
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: inherit;
+}
+
+table.mailmgmt-list-table th:nth-child(3),
+table.mailmgmt-list-table td:nth-child(3) {
+    width: max(3rem, 15%); 
+    text-align: center;
+}
+
+table.mailmgmt-list-table th:nth-child(4),
+table.mailmgmt-list-table td:nth-child(4) {
+    width: 45%;
+}
+
+table.mailmgmt-list-table th:nth-child(5),
+table.mailmgmt-list-table td:nth-child(5) {
+}
+.mailmgmt-list-table--head {
+    text-align: left;
+    padding: 0;
+    margin: 0;
+}
+.mailmgmt--table--header--check {
+
+}
+.mailmgmt--table--header {
+
+}
+.mailmgmt-list-table--head,
+.mailmgmt-list-table--item {
+    --b-s: 0px 1px 1px rgba(var(--color-primary-rgb),0.3);
+    --b-s-active: 0px 3px 3px rgba(var(--color-primary-rgb),0.3);
+    border-bottom: 1px dotted rgba(var(--color-primary-accent-rgb), 0.3);
+    box-shadow: var(--b-s);
+    transition: box-shadow 0.2s linear;
+    height: 3rem;
+}
+.mailmgmt-list-table--item--skeleton {
+    animation: tableListLoading 1s infinite ease-in-out;
+    animation-delay: calc(var(--row-index) * 0.5s);
+}
+.mailmgmt-list-table--item:hover {
+    box-shadow: var(--b-s-active);
+}
+.mailmgmt--table--data--check {
+
+}
+.mailmgmt--table--data {
+
+}
+.mailmgmt--table--action {
+
+}
+
+
 .mailmgmt-list-item {
     display: flex;
     flex-direction: row;
     padding-left: 2rem;
     padding-right: 0;
-    border-radius: 10px;
-    border: 1px solid var(--color-primary-accent);
+    border-left: var(--b);
+    border-right: var(--b);
+    border-bottom: var(--b);
     overflow: hidden;
     gap: 0.5rem;
     transition: box-shadow 0.1s ease-in-out;
-    box-shadow: 1px 1px 1px rgba(var(--color-primary-rgb),0.3);
+}
+.mailmgmt-list-item:first-of-type {
+    border-top: var(--b);
 }
 .mailmgmt-list-item:hover {
     box-shadow: 3px 3px 3px rgba(var(--color-primary-rgb),0.3);
@@ -30,7 +214,7 @@
 .mailmgmt-list-item-header {
     letter-spacing: 0.015rem;
     padding-top: 0.5rem;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
 }
 .mailmgmt-list-item-header .header-badge {
     font-size: 0.7rem;
@@ -48,10 +232,15 @@
     gap: 0.325rem;
 }
 .mailmgmt-email-alias {
+    display: inline-block;
+    text-wrap: nowrwap;
     padding: 0.125rem 0.375rem;
-    background-color: rgba(var(--color-primary-accent-rgb), 0.2);
+    background-color: rgba(var(--color-standout-rgb), 0.2);
     box-shadow: 1px 2px 3px rgba(var(--color-primary-rgb),0.3);
     border-radius: 4px;
+}
+.mailmgmt-email-alias+.mailmgmt-email-alias {
+    margin-inline-start:0.5rem;
 }
 .mailmgmt-list-item-footer {
 
@@ -63,8 +252,8 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-self: center;
-    padding-left: 2rem;
+    justify-self: flex-end;
+    height: 100%;
 }
 .mailmgmt-action-button {
     border: none;
@@ -72,14 +261,15 @@
     padding: 0 0.5rem;
     font-size: 1rem;
     height: 100%;
+    background-color: transparent;
+    color: rgba(var(--color-primary-accent-rgb), 0.6);
+    transition: all 0.2s;
 }
 .mailmgmt-list-item-actions:has(.mailmgmt-action-button:hover) .mailmgmt-action-button:not(:hover) {
-    padding: 0 0.25rem;
-    transition: padding 0.1s linear;
+    color: rgba(var(--color-primary-accent-rgb), 0.4);
 }
 .mailmgmt-action-button:hover {
-    padding: 0 1rem;
-    transition: padding 0.1s linear;
+    color: rgba(var(--color-primary-accent-rgb), 0.8);
 }
 .mailmgmt-action-icon {
     width: 1.5rem;
@@ -93,4 +283,126 @@
 }
 .mailmgmt-action-delete {
 
+}
+
+@keyframes tableListLoading {
+    0%, 100% {
+        box-shadow: var(--b-s);
+    }
+    50% {
+        box-shadow: var(--b-s-active); 
+    }
+}
+
+
+/***** MODAL DIALOG ****/
+div[id^="modal-"] {
+	/* Underlay covers entire screen. */
+	position: fixed;
+	top:0px;
+	bottom: 0px;
+	left:0px;
+	right:0px;
+	background-color:rgba(0,0,0,0.5);
+	z-index:1000;
+
+	/* Flexbox centers the .modal-content vertically and horizontally */
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+
+	/* Animate when opening */
+	animation-name: fadeIn;
+	animation-duration:150ms;
+	animation-timing-function: ease;
+}
+
+div[id^="modal-"] > .modal-underlay {
+	/* underlay takes up the entire viewport. This is only
+	required if you want to click to dismiss the popup */
+	position: absolute;
+	z-index: -1;
+	top:0px;
+	bottom:0px;
+	left: 0px;
+	right: 0px;
+}
+
+div[id^="modal-"] > .modal-container {
+    position: relative;
+
+	/* Position visible dialog near the top of the window */
+	margin-top:10vh;
+
+	/* Sizing for visible dialog */
+	width:80%;
+	max-width:600px;
+
+	/* Display properties for visible dialog*/
+    overflow: hidden;
+	border: 1px solid rgba(var(--color-standout-rgb), 0.3);
+	border-radius:8px;
+	background-color:var(--color-secondary);
+
+	/* Animate when opening */
+	animation-name:zoomIn;
+	animation-duration:150ms;
+	animation-timing-function: ease;
+}
+div[id^="modal-"] > .modal-container > .modal-close-button {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    color: var(--color-primary);
+    background-color: transparent;
+    border-radius: 50%;
+    overflow: hidden;
+    aspect-ratio: 1;
+    border: 0;
+}
+div[id^="modal-"] > .modal-container > .modal-header {
+    padding: 1rem 1rem;
+    font-size: 1.5rem;
+    color: var(--header-text-color);
+    background-color: var(--color-standout);
+}
+div[id^="modal-"] > .modal-container > .modal-content {
+    padding: 1rem 1rem;
+}
+div[id^="modal-"].closing {
+	/* Animate when closing */
+	animation-name: fadeOut;
+	animation-duration:150ms;
+	animation-timing-function: ease;
+}
+
+div[id^="modal-"].closing > .modal-container {
+	/* Animate when closing */
+	animation-name: zoomOut;
+	animation-duration:150ms;
+	animation-timing-function: ease;
+}
+
+@keyframes fadeIn {
+	0% {opacity: 0;}
+	100% {opacity: 1;}
+}
+
+@keyframes fadeOut {
+	0% {opacity: 1;}
+	100% {opacity: 0;}
+}
+
+@keyframes zoomIn {
+	0% {transform: scale(0.9);}
+	100% {transform: scale(1);}
+}
+
+@keyframes zoomOut {
+	0% {transform: scale(1);}
+	100% {transform: scale(0.9);}
 }

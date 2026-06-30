@@ -6,3 +6,5 @@ vendor/
 test/
 out.log
 setup.example.txt
+node_modules/
+list/

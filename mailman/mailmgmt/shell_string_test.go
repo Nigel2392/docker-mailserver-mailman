@@ -55,7 +55,7 @@ func TestMailCommands(t *testing.T) {
 		{
 			name: "Mail List",
 			build: func() *mailmgmt.Command {
-				return base.Email().CommandList()
+				return base.Email().CommandList(nil)
 			},
 			wantArgs: "email list",
 		},
@@ -78,14 +78,14 @@ func TestMailCommands(t *testing.T) {
 			build: func() *mailmgmt.Command {
 				return base.Restrict().Remove().CommandSend("test@example.com")
 			},
-			wantArgs: "email restrict rem send test@example.com",
+			wantArgs: "email restrict del send test@example.com",
 		},
 		{
 			name: "Restrict Remove Receive",
 			build: func() *mailmgmt.Command {
 				return base.Restrict().Remove().CommandReceive("test@example.com")
 			},
-			wantArgs: "email restrict rem receive test@example.com",
+			wantArgs: "email restrict del receive test@example.com",
 		},
 		{
 			name: "Restrict List Send",

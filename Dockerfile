@@ -43,6 +43,7 @@ COPY --from=builder /mailman/server /mailman/server
 
 WORKDIR /mailman
 
+ENV DOCKER=1
 ENV MAILMAN_INTERFACE=0.0.0.0
 ENV MAILMAN_PORT=8080
 ENV MAILMAN_SIEVE_TEMPLATE=/mailman/templates/tmp/docker-mailserver/before.dovecot.sieve.tmpl

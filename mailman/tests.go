@@ -53,11 +53,11 @@ func must[T any](v T, err error) T {
 }
 
 func testOutputs() {
-	mails := must(mailmgmt.CONFIG.CommandSetup(context.Background()).Email().List())
+	mails := must(mailmgmt.CONFIG.CommandSetup(context.Background()).Email().List(nil))
 	for _, addr := range mails {
 		fmt.Fprintf(outFile, "Address: %s\n", addr.Email)
-		fmt.Fprintf(outFile, "Current Quota: %d\n", addr.CurrentQuota)
-		fmt.Fprintf(outFile, "Max Quota: %d\n", addr.MaxQuota)
+		fmt.Fprintf(outFile, "Current Quota: %s\n", addr.CurrentQuota)
+		fmt.Fprintf(outFile, "Max Quota: %s\n", addr.MaxQuota)
 		fmt.Fprintf(outFile, "Percentage Full: %d%%\n", addr.PercentageFull)
 
 		fmt.Fprintln(outFile, "Aliases:")
@@ -67,7 +67,7 @@ func testOutputs() {
 		}
 	}
 
-	aliases := must(mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().Map())
+	aliases := must(mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().Map(nil))
 	for target, list := range aliases {
 		fmt.Fprintf(outFile, "%s:\n", target)
 		for _, list := range list {
@@ -94,17 +94,17 @@ func testCommands() {
 
 	var cmd *mailmgmt.Command
 
-	mails, _ := mailmgmt.CONFIG.CommandSetup(context.Background()).Email().List()
-	for _, addr := range mails {
-		mailmgmt.CONFIG.CommandSetup(context.Background()).Email().Delete(addr.Email)
-	}
+	//mails, _ := mailmgmt.CONFIG.CommandSetup(context.Background()).Email().List(nil)
+	//for _, addr := range mails {
+	//	mailmgmt.CONFIG.CommandSetup(context.Background()).Email().Delete(addr.Email)
+	//}
 
 	for i := range 14 {
 		cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandAdd(fmt.Sprintf("test%d@go-dev.nl", i), "test")
 		writeCommandOutputFile(cmd)
 
 		for j := range 3 {
-			cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().CommandAdd(fmt.Sprintf("test%d-%d@go-dev.nl", i, j), fmt.Sprintf("test%d@go-dev.nl", i))
+			cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().CommandAdd(fmt.Sprintf("new-test%d-%d@go-dev.nl", i, j), fmt.Sprintf("new-test%d@go-dev.nl", i))
 			writeCommandOutputFile(cmd)
 		}
 	}
@@ -112,10 +112,10 @@ func testCommands() {
 	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandUpdate("test1@go-dev.nl", "test1")
 	writeCommandOutputFile(cmd)
 
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandList()
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandList(nil)
 	writeCommandOutputFile(cmd)
 
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandList()
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandList(nil)
 	writeCommandOutputFile(cmd)
 
 	// List all send restrictions (restrict list send)

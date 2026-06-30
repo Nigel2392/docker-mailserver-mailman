@@ -4,18 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"time"
 
+	mailmgmt_cache "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
+	"github.com/Nigel2392/go-django/src/core/cache"
+	"github.com/Nigel2392/go-django/src/core/except"
+	"github.com/Nigel2392/go-django/src/views"
+	"github.com/Nigel2392/goldcrest"
 	"github.com/Nigel2392/mux"
 	"github.com/moby/moby/client"
 )
 
 const (
-	MAILSERVER_CONTAINER_NAME = "mailmgmt.MAILSERVER_CONTAINER_NAME"
-	EMAIL_REGEX               = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
+	MAILSERVER_CONTAINER_NAME  = "mailmgmt.MAILSERVER_CONTAINER_NAME"
+	MAILSERVER_CACHING_ENABLED = "mailmgmt.MAILSERVER_CACHING_ENABLED"
+	EMAIL_REGEX                = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
 )
 
 var CONFIG *MailManagementConfig
@@ -35,6 +42,7 @@ func SetupCtx(ctx context.Context) *SetupCommand {
 }
 
 func NewAppConfig() django.AppConfig {
+
 	CONFIG = &MailManagementConfig{
 		AppConfig: apps.NewAppConfig("mailmgmt"),
 	}
@@ -73,16 +81,53 @@ func NewAppConfig() django.AppConfig {
 		return nil
 	}
 
+	CONFIG.Ready = func() error {
+
+		goldcrest.Register(django.HOOK_SERVER_ERROR, 0, django.ServerErrorHook(func(w http.ResponseWriter, r *http.Request, app *django.Application, err except.ServerError) {
+			if !IsMailserverError(err) {
+				return
+			}
+
+			var mErr = new(mailserverError)
+			if !errors.As(err, mErr) {
+				panic(err)
+			}
+
+			switch mErr.code {
+			case CodeUnknown:
+			case CodeNotRunning:
+			}
+
+		}))
+		return nil
+	}
+
 	CONFIG.Routing = func(m mux.Multiplexer) {
 		var group = m.Any("", mux.NewHandler(CONFIG.ViewIndex), "mailmgmt")
+		var htmx = group.Get("/htmx", nil, "htmx")
 		//group.Use(authentication.LoginRequiredMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		//	http.Redirect(w, r, django.Reverse("auth:login"), 302)
 		//}))
 
-		group.Get("/emails", mux.NewHandler(CONFIG.ViewEmails), "emails")
+		group.Get("/emails", views.Serve(ViewEmails), "emails")
+		htmxEmails := htmx.Get("/emails", views.Serve(ViewEmailsHtmx), "emails")
+		htmxEmails.Get("/add", views.Serve(ViewAddEmail), "add")
+		htmxEmails.Post("/add", views.Serve(ViewAddEmail))
 	}
 
 	return CONFIG
+}
+
+func Cache() cache.Cache {
+	var enabled = django.ConfigGet(
+		django.Global.Settings,
+		MAILSERVER_CACHING_ENABLED,
+		true,
+	)
+
+	return mailmgmt_cache.NewMailMgmtCache(
+		enabled, cache.Default(),
+	)
 }
 
 func (c *MailManagementConfig) CommandSetup(ctx context.Context) *SetupCommand {

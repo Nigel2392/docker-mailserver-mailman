@@ -1,17 +1,19 @@
 package mailmgmt
 
+import "al.essio.dev/pkg/shellescape"
+
 type QuotaCommand struct {
 	s SetupCommand
 }
 
 func (m QuotaCommand) CommandAdd(target, quota string) *Command {
 	return &Command{
-		s: m.s.Arg("add", target, quota),
+		s: m.s.Arg("set", shellescape.Quote(target), shellescape.Quote(quota)),
 	}
 }
 
-func (m QuotaCommand) CommandDelete(alias, target string) *Command {
+func (m QuotaCommand) CommandDelete(target string) *Command {
 	return &Command{
-		s: m.s.Arg("del", target),
+		s: m.s.Arg("del", shellescape.Quote(target)),
 	}
 }

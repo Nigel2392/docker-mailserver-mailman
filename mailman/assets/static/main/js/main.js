@@ -1,6 +1,8 @@
 const LIGHTMODE = "light";
 const DARKMODE = "dark";
 
+
+
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -105,4 +107,7 @@ document.addEventListener("DOMContentLoaded", function(e){
             }, 1000 * i)
         }
     }, 4000)
+
+
+    
 })

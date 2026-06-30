@@ -1,0 +1,1 @@
+docker volume rm --force mailman_mailserver_data mailman_mailserver_state mailman_mailserver_config

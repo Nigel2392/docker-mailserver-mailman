@@ -8,6 +8,7 @@ import (
 	"net/mail"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
@@ -18,10 +19,14 @@ import (
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/Nigel2392/go-django/src/contrib/session"
+
+	// "github.com/Nigel2392/go-django/src/contrib/translations"
 	"github.com/Nigel2392/go-django/src/core/checks"
 	"github.com/Nigel2392/go-django/src/core/command"
 	"github.com/Nigel2392/go-django/src/core/logger"
 )
+
+const APP_SHUTDOWN = "APP_SHUTDOWN"
 
 func GetEnv(key string, default_ ...string) string {
 	var val, ok = os.LookupEnv(key)
@@ -90,6 +95,18 @@ func main() {
 		<-interrupts
 
 		var exitCode int
+		for _, fn := range django.ConfigGet(django.Global.Settings, APP_SHUTDOWN, []func() error{}) {
+			if err := fn(); err != nil {
+				fmt.Printf("Error while executing shutdown function: %v\n", err)
+				exitCode = 1
+			}
+		}
+
+		if err := django.Global.Quit(); err != nil {
+			fmt.Printf("failed to close django app: %v\n", err)
+			exitCode = 1
+		}
+
 		for _, file := range files {
 			err := file.Close()
 			if err != nil {
@@ -108,14 +125,16 @@ func main() {
 
 	var app = django.App(
 		django.AppSettings(django.Config(map[string]interface{}{
-			django.APPVAR_ALLOWED_HOSTS:        []string{"*"},
-			django.APPVAR_DATABASE:             db,
-			django.APPVAR_HOST:                 MAILMAN_INTERFACE,
-			django.APPVAR_PORT:                 MAILMAN_PORT,
-			auth.APPVAR_AUTH_EMAIL_LOGIN:       true,
-			migrator.APPVAR_MIGRATION_DIR:      "./migrations",
-			mailmgmt.MAILSERVER_CONTAINER_NAME: GetEnv("MAILSERVER_CONTAINER_NAME"),
-			sieve.MAILMAN_SIEVE_TEMPLATE:       MAILMAN_SIEVE_TEMPLATE,
+			django.APPVAR_ALLOWED_HOSTS:         []string{"*"},
+			django.APPVAR_DATABASE:              db,
+			django.APPVAR_HOST:                  MAILMAN_INTERFACE,
+			django.APPVAR_PORT:                  MAILMAN_PORT,
+			django.APPVAR_RECOVERER:             false,
+			auth.APPVAR_AUTH_EMAIL_LOGIN:        true,
+			migrator.APPVAR_MIGRATION_DIR:       "./migrations",
+			mailmgmt.MAILSERVER_CONTAINER_NAME:  GetEnv("MAILSERVER_CONTAINER_NAME"),
+			mailmgmt.MAILSERVER_CACHING_ENABLED: GetEnvT("MAILSERVER_CACHING_ENABLED", true, strconv.ParseBool),
+			sieve.MAILMAN_SIEVE_TEMPLATE:        MAILMAN_SIEVE_TEMPLATE,
 		})),
 		django.AppLogger(&logger.Logger{
 			Level:       logger.DBG,
@@ -131,6 +150,7 @@ func main() {
 			auth.NewAppConfig,
 			mailmgmt.NewAppConfig,
 			sieve.NewAppConfig,
+			// translate.NewAppConfig,
 			NewAppConfig,
 		),
 	)
