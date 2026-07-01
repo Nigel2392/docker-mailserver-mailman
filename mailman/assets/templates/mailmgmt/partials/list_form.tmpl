@@ -1,12 +1,18 @@
 {{ define "list_form" }}
     {{ $ctx := . }}
-    <form class="mailmgmt-list-toolbar" method="GET" {{ block "attributes" . }}{{ end }}>
+    <form id="list-form" class="mailmgmt-list-toolbar" method="GET" {{ block "attributes" . }}{{ end }}>
         <input type="hidden" name="page" value="{{ .Get "view.page" }}"/>
+
+        <div class="mailmgmt-list-actions pre">
+            {{block "pre_actions" .}}{{end}}
+        </div>
+
         <select class="mailmgmt-list-toolbar-limit form-control" name="limit" onchange="this.form.submit()" data-controller="tooltip" data-tooltip-content-value="{{ T "Limit" }}" data-tooltip-placement-value="bottom">
             {{ range $v := (.Get "view.limitChoices") }}
                 <option value="{{ $v }}"{{ if (eq $v ($ctx.Get "view.limit")) }}selected{{end}}>{{ $v }}</option>
             {{ end }}
         </select>
+
         <div class="mailmgmt-list-search">
             <input type="text" name="search" value="{{ .Get "view.query" }}" placeholder="{{ T "Search..." }}" class="mailmgmt-list-search-input form-control"/>
             <button class="mailmgmt-list-search-button" data-controller="tooltip" data-tooltip-content-value="{{ T "Search..." }}" data-tooltip-placement-value="bottom">
@@ -16,8 +22,9 @@
             </button>
         </div>
 
-        <div class="mailmgmt-list-actions">
-            {{block "actions" .}}{{end}}
+        <div class="mailmgmt-list-actions post">
+            {{block "post_actions" .}}{{end}}
         </div>
+
     </form>
 {{ end }}

@@ -57,6 +57,20 @@ func (m MailCommand) CommandDelete(emails ...string) *Command {
 	}
 }
 
+// CommandGet retrieves a specific email address and its aliases.
+func (m MailCommand) CommandGet(email string) *Command {
+	safeEmail := shellescape.Quote(email)
+
+	// $2 is the exact email address.
+	// If it matches, 'm' becomes true, printing this line and any subsequent alias lines
+	// until the next '*' line resets 'm'.
+	awkScript := fmt.Sprintf(`awk -v e=%s '/^\*/ { m=(tolower($2) == tolower(e)) } m { print }'`, safeEmail)
+
+	return &Command{
+		s: m.s.Arg(fmt.Sprintf("list | %s", awkScript)),
+	}
+}
+
 type EmailListConfig struct {
 	Page           int
 	Limit          int
@@ -161,8 +175,24 @@ func (m MailCommand) Delete(emails ...string) error {
 
 }
 
-var _matchEmailListRegex = regexp.MustCompile(fmt.Sprintf(`\* %s \( ([\w\.\~]+) \/ ([\w\.\~]+) \) \[(\d+)%%\]`, EMAIL_REGEX))
-var _matchEmailListAliasRegex = regexp.MustCompile(`\[\s*aliases\s*->\s+([^\]]*)\]`)
+// Get returns a single ListedAddress for a specific email.
+func (m MailCommand) Get(email string) (*ListedAddress, error) {
+	src, _, err := m.CommandGet(email).Exec()
+	if err != nil {
+		return nil, err
+	}
+
+	resList, err := parseEmailListOutput(src)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resList) == 0 {
+		return nil, fmt.Errorf("email %q not found", email)
+	}
+
+	return &resList[0], nil
+}
 
 func (m MailCommand) List(cnf *EmailListConfig) ([]ListedAddress, error) {
 	src, _, err := m.CommandList(cnf).Exec()
@@ -170,11 +200,19 @@ func (m MailCommand) List(cnf *EmailListConfig) ([]ListedAddress, error) {
 		return nil, err
 	}
 
+	resList, err := parseEmailListOutput(src)
+
+	return resList, nil
+}
+
+var _matchEmailListRegex = regexp.MustCompile(fmt.Sprintf(`\* %s \( ([\w\.\~]+) \/ ([\w\.\~]+) \) \[(\d+)%%\]`, EMAIL_REGEX))
+var _matchEmailListAliasRegex = regexp.MustCompile(`\[\s*aliases\s*->\s+([^\]]*)\]`)
+
+func parseEmailListOutput(src string) ([]ListedAddress, error) {
 	var scanner = bufio.NewScanner(strings.NewReader(src))
 	var resList = make([]ListedAddress, 0)
 	var idx = 0
 	for scanner.Scan() {
-
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
@@ -227,6 +265,5 @@ func (m MailCommand) List(cnf *EmailListConfig) ([]ListedAddress, error) {
 
 		idx++
 	}
-
 	return resList, nil
 }

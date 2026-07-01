@@ -1,13 +1,15 @@
+.disabled,
 .mailmgmt-disabled {
     opacity: 0.5;
 }
 
+.disabled,
 .mailmgmt-disabled button,
 .mailmgmt-disabled a,
 .mailmgmt-disabled input,
 .mailmgmt-disabled textarea,
 .mailmgmt-disabled select {
-    cursor: not-allowed;
+    cursor: not-allowed !important;
 }
 #list-body {
     transition: opacity 200ms ease-in-out;
@@ -15,13 +17,15 @@
 }
 
 /* The state HTMX triggers while loading */
-#list-body.htmx-request {
+#list-body.htmx-request,
+#list-body:has(.htmx-request) {
     opacity: 0.5; /* Greys out the table */
     pointer-events: none; /* Prevents users from clicking buttons/checkboxes while loading */
 }
+.mailmgmt-content,
 .mailmgmt-list {
     --b: 1px var(--border-style) var(--color-primary-accent);
-    /* max-width: 1400px; */
+    max-width: 1400px;
     padding: 1rem 2rem;
     padding-bottom: 1rem;
     display: flex;
@@ -73,19 +77,26 @@
     color: var(--color-primary-accent);
     background-color: transparent;
 }
-.mailmgmt-list-toolbar .mailmgmt-list-actions button,
-.mailmgmt-list-toolbar .mailmgmt-list-actions .button {
+.mailmgmt-list-toolbar .mailmgmt-list-actions.pre button,
+.mailmgmt-list-toolbar .mailmgmt-list-actions.pre .button {
+    border-left: 0;
+    border-right: var(--b);
+}
+.mailmgmt-list-toolbar .mailmgmt-list-actions.post button,
+.mailmgmt-list-toolbar .mailmgmt-list-actions.post .button {
     border-right: 0;
     border-left: var(--b);
 }
 .labeled-action,
 .mailmgmt-list-actions {
-    margin-left: auto;
     height: 100%;
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 0.275rem;
+}
+.mailmgmt-list-actions.post {
+    margin-left: auto;
 }
 
 .mailmgmt-list-table-wrapper {
@@ -186,6 +197,59 @@ table.mailmgmt-list-table td:nth-child(5) {
 
 }
 
+.mailmgmt-paginator-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-height: 2rem;
+    font-size: 1rem;
+    color: var(--color-standout);
+}
+.mailmgmt-paginator-container .pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.5rem;
+    width: 100%;
+}
+.mailmgmt-paginator-container .pagination section.pagination--paginator {
+    display: grid;
+    grid-template-columns: 1fr 3fr 1fr;
+    width: 100%;
+    gap: 0.5em;
+    padding: 0;
+}
+.mailmgmt-paginator-container .pagination div.prev {
+    margin-left: 1em;
+}
+.mailmgmt-paginator-container .pagination div.next {
+    margin-right: 1em;
+}
+.mailmgmt-paginator-container .pagination div.prev,
+.mailmgmt-paginator-container .pagination div.next,
+.mailmgmt-paginator-container .pagination div.page-numbers {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 0.5em;
+}
+.mailmgmt-paginator-container .pagination div.page-number {
+}
+.mailmgmt-paginator-container .pagination div.active {
+    font-weight: bold;
+}
+.mailmgmt-paginator-container .pagination div.page-number a {
+    display: inline-block;
+    padding: 0.25em 0.5em;
+    border: 1px solid var(--secondary-bg-color);
+    border-radius: 0.125rem;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;   
+}
+
 
 .mailmgmt-list-item {
     display: flex;
@@ -256,6 +320,7 @@ table.mailmgmt-list-table td:nth-child(5) {
     height: 100%;
 }
 .mailmgmt-action-button {
+    display: flex;
     border: none;
     cursor: pointer;
     padding: 0 0.5rem;
@@ -364,6 +429,7 @@ div[id^="modal-"] > .modal-container > .modal-close-button {
     aspect-ratio: 1;
     border: 0;
 }
+.mailmgmt-header,
 div[id^="modal-"] > .modal-container > .modal-header {
     padding: 1rem 1rem;
     font-size: 1.5rem;

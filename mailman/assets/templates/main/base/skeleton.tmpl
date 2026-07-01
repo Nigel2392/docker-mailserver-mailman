@@ -34,7 +34,7 @@
         </style>
         {{block "css" .}}{{end}}
     </head>
-    <body id="body" class="{{$mode.Name}}">
+    <body id="body" class="{{$mode.Name}}" data-controller="document" data-document-modes-value="{{ json modes }}" data-document-navbar-link-selector-value="a.menu-item">
 
         {{if .Data.messages}}
             {{template "messages" . }}

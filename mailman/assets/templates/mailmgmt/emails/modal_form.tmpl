@@ -1,12 +1,11 @@
-{{ define "add" }}
+{{ define "modal_form" }}
     {{ if .Get "valid" }}
         <section>
-            <p class="accented">{{ "E-mail added successfully." }}</p>
+            <p class="accented">{{ .Get "success_text" }}</p>
         </section>
     {{ else }}
 
-    {{ $mailmgmt_url := (url "mailmgmt:htmx:emails:add") }}
-    <form action="{{ $mailmgmt_url }}" method="post" autocomplete="off" data-form-modal-target="form" hx-post="{{ $mailmgmt_url }}" hx-trigger="submit" hx-target="#{{ .Get "view.modal.id" }}" hx-swap="outerHTML">
+    <form action="{{ .Get "submit_url" }}" method="post" autocomplete="off" data-form-modal-target="form" hx-post="{{ .Get "submit_url" }}" hx-trigger="submit" hx-target="#{{ .Get "view.modal.id" }}" hx-swap="outerHTML">
         {{ csrf_field }}
 
         {{ $errors := .Data.form.ErrorList }}

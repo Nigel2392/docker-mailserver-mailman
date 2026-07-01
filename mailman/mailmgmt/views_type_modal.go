@@ -7,11 +7,13 @@ import (
 	"io"
 	"net/http"
 
+	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/core/assert"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/except"
 	"github.com/Nigel2392/go-django/src/core/filesystem/tpl"
+	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/google/uuid"
@@ -58,13 +60,37 @@ func (l *BoundFormModalView[FORM]) GetContext(req *http.Request) (c ctx.Context,
 	var ctx = ctx.RequestContext(req)
 
 	var valid bool
-	l.Form, valid, err = l.View.Validate(req, l.Form)
-	if err != nil {
-		return c, err
+	if req.Method == http.MethodPost {
+
+		l.Form = forms.Initialize(l.Form,
+			forms.WithRequestData(http.MethodPost, req),
+		)
+
+		if !forms.IsValid(req.Context(), l.Form) {
+			valid = false
+			goto setupCtx
+		}
+
+		l.Form, valid, err = l.View.Validate(req, l.Form)
+		if err != nil {
+			return c, err
+		}
 	}
 
+setupCtx:
 	ctx.Set("form", l.Form)
 	ctx.Set("valid", valid)
+	ctx.Set("success_text", trans.GetTextFunc(l.View.SuccessText)(req.Context()))
+	switch v := l.View.SubmitURL.(type) {
+	case func(*BoundFormModalView[FORM], *http.Request) string:
+		ctx.Set("submit_url", v(l, req))
+	case func(*http.Request) string:
+		ctx.Set("submit_url", v(req))
+	case string:
+		ctx.Set("submit_url", django.Reverse(v))
+	default:
+		assert.Fail("submit url not provided for BoundFormModalView")
+	}
 
 	l.Context = ctx
 	if l.View.GetContext != nil {
@@ -168,6 +194,8 @@ type ModalFormView[FORM forms.Form] struct {
 	BaseKey        string
 	Title          any // string | func(*http.Request) string | func(context.Context) string
 	Template       any // string | func(*http.Request) string
+	SubmitURL      any // string | func(*http.Request) string | func(view, *http.Request) string
+	SuccessText    any // trans.GetText
 	Render         func(*BoundFormModalView[FORM], io.Writer, *http.Request, ctx.Context) error
 	GetContext     func(*BoundFormModalView[FORM], *ctx.HTTPRequestContext) (ctx.Context, error)
 	GetForm        func(r *http.Request) (FORM, error)

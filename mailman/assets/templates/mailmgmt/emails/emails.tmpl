@@ -7,11 +7,11 @@
 {{ end }}
 
 {{ define "content" }}
-    <div class="mailmgmt-list">
+    <div class="mailmgmt-list" data-controller="table-list">
         {{ include . "" "mailmgmt/partials/list_form.tmpl" "mailmgmt/partials/email_list_form.tmpl" }}
 
         <div class="mailmgmt-list-table-wrapper">
-            <table class="mailmgmt-list-table" cellspacing="0" data-controller="table-list">
+            <table class="mailmgmt-list-table" cellspacing="0">
                 <thead class="mailmgmt-list-table--head">
                     <tr>
                         <th scope="col" class="mailmgmt--table--header--check">
@@ -61,10 +61,12 @@
                     {{ end }}
                 </tbody>
             </table>
-
-            <div id="mailmgmt-paginator" class="mailmgmt-list-paginator"></div>
-
         </div>
+
+        <div class="mailmgmt-paginator-container">
+            <div id="mailmgmt-paginator" class="mailmgmt-list-paginator"></div>
+        </div>
+
     </div>
 {{ end }}
 

@@ -8,6 +8,7 @@ import (
 
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
+	"github.com/Nigel2392/go-django/src/core/assert"
 	"github.com/Nigel2392/go-django/src/core/filesystem"
 	"github.com/Nigel2392/go-django/src/core/filesystem/staticfiles"
 	"github.com/Nigel2392/go-django/src/core/filesystem/tpl"
@@ -16,8 +17,24 @@ import (
 )
 
 func init() {
+	if len(modes) <= 1 {
+		panic("there must be more than one mode, dummy!")
+	}
+
+	modes[len(modes)-1].Next = &modes[0]
+
+	//len -2 so modes[i]+1 is safe.
+	for i := 0; i < len(modes)-1; i++ {
+		modes[i].Next = &modes[i+1]
+	}
+
 	for _, color := range modes {
 		_modes[color.Name] = color
+
+		assert.True(
+			color.Next != nil,
+			"logic fail, start debugging: %+v", color,
+		)
 	}
 }
 
@@ -33,6 +50,13 @@ func NewAppConfig() django.AppConfig {
 		return template.FuncMap{
 			"mode": func() *boundColors {
 				return modeFromContext(r)
+			},
+			"modes": func() []string {
+				var l = make([]string, 0, len(modes))
+				for _, mode := range modes {
+					l = append(l, mode.Name)
+				}
+				return l
 			},
 		}
 	})
@@ -93,14 +117,14 @@ func (bc boundColors) Label() string {
 	return bc.Colors.Label(bc.r.Context())
 }
 
-func (bc boundColors) Opposite() string {
-	return bc.Colors.Opposite(bc.r.Context())
+func (bc boundColors) Next() string {
+	return bc.Colors.Next.Label(bc.r.Context())
 }
 
 type Colors struct {
 	Name          string
 	Label         func(context.Context) string
-	Opposite      func(context.Context) string
+	Next          *Colors
 	Primary       string
 	PrimaryAccent string
 	Secondary     string
@@ -116,7 +140,6 @@ var modes = []Colors{
 	{
 		Name:          __light_mode,
 		Label:         trans.S("Light"),
-		Opposite:      trans.S("Dark"),
 		BorderStyle:   "solid",
 		Primary:       "27, 27, 27",
 		PrimaryAccent: "20, 163, 156",
@@ -129,7 +152,6 @@ var modes = []Colors{
 	{
 		Name:          "dark",
 		Label:         trans.S("Dark"),
-		Opposite:      trans.S("Light"),
 		BorderStyle:   "dotted",
 		Primary:       "255, 255, 255",
 		PrimaryAccent: "124, 124, 124",

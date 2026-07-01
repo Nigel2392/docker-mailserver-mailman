@@ -361,8 +361,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .form-control:disabled, .form-control[readonly]{
     box-shadow: 0 2px 6px 1px var(--color-success-dark);
-    background-color: var(--color-primary-accent, #f8f9fa);
-    color: var(--color-secondary);
+    cursor:not-allowed;
     opacity: 1;
 }
 textarea.form-control {

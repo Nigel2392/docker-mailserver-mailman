@@ -1,6 +1,6 @@
 <section class="navbar-container">
     {{ $mode := mode }}
-    <p id="mode-switch">{{ T "%s Mode" $mode.Opposite }}</p>
+    <p id="mode-switch" data-document-target="modeSwitch" data-action="click->document#nextStyleMode">{{ T "%s Mode" $mode.Next }}</p>
     <div class="navbar">
         <div class="navbar-item navbar-left">
             <!-- <a href="{{ url "mailmgmt" }}"> -->

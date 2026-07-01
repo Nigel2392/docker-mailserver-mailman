@@ -109,10 +109,19 @@ func NewAppConfig() django.AppConfig {
 		//	http.Redirect(w, r, django.Reverse("auth:login"), 302)
 		//}))
 
-		group.Get("/emails", views.Serve(ViewEmails), "emails")
+		emails := group.Get("/emails", views.Serve(ViewEmails), "emails")
+		emails.Get("/delete", views.Serve(ViewDeleteEmail), "delete")
+		emails.Post("/delete", views.Serve(ViewDeleteEmail))
+
 		htmxEmails := htmx.Get("/emails", views.Serve(ViewEmailsHtmx), "emails")
-		htmxEmails.Get("/add", views.Serve(ViewAddEmail), "add")
-		htmxEmails.Post("/add", views.Serve(ViewAddEmail))
+		htmxEmails.Get("/add", views.Serve(ViewAddEmailHtmx), "add")
+		htmxEmails.Post("/add", views.Serve(ViewAddEmailHtmx))
+		htmxEmails.Get("/update", views.Serve(ViewUpdateEmailHtmx), "update")
+		htmxEmails.Post("/update", views.Serve(ViewUpdateEmailHtmx))
+
+		htmxAliases := htmx.Get("/alias", views.Serve(ViewEmailsHtmx), "alias")
+		htmxAliases.Get("/add", views.Serve(ViewAddAliasHtmx), "add")
+		htmxAliases.Post("/add", views.Serve(ViewAddAliasHtmx))
 	}
 
 	return CONFIG
