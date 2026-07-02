@@ -116,7 +116,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .messages {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
@@ -284,6 +284,7 @@ h1, h2, h3, h4, h5, h6 {
 .main-center {
     width: 80%;
     margin-left: auto;
+    position: relative;
     border-left: 1px var(--border-style) var(--color-primary-accent);
     overflow: auto;
 }

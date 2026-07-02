@@ -9,13 +9,17 @@ import (
 	"time"
 
 	mailmgmt_cache "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
+	merrs "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/errors"
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/shell"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
+	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
 	"github.com/Nigel2392/go-django/src/core/cache"
 	"github.com/Nigel2392/go-django/src/core/except"
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/Nigel2392/goldcrest"
 	"github.com/Nigel2392/mux"
+	"github.com/Nigel2392/mux/middleware/authentication"
 	"github.com/moby/moby/client"
 )
 
@@ -31,6 +35,7 @@ type MailManagementConfig struct {
 	*apps.AppConfig
 	Docker                  *client.Client
 	MailServerContainerName string
+	pool                    *shell.ExecPool
 }
 
 func Setup() *SetupCommand {
@@ -38,6 +43,7 @@ func Setup() *SetupCommand {
 }
 
 func SetupCtx(ctx context.Context) *SetupCommand {
+	ctx = shell.ContextWithExecPool(ctx, CONFIG.pool)
 	return CONFIG.CommandSetup(ctx)
 }
 
@@ -67,7 +73,7 @@ func NewAppConfig() django.AppConfig {
 		}
 
 		// Check mailserver exists
-		_, err = CONFIG.Docker.ContainerInspect(
+		inspectResult, err := CONFIG.Docker.ContainerInspect(
 			ctx, CONFIG.MailServerContainerName,
 			client.ContainerInspectOptions{},
 		)
@@ -78,24 +84,33 @@ func NewAppConfig() django.AppConfig {
 			)
 		}
 
+		if !inspectResult.Container.State.Running {
+
+		}
+
+		_, pool, err := shell.StartPool(context.Background(), CONFIG.Docker, CONFIG.MailServerContainerName)
+		if err != nil {
+			return fmt.Errorf("could not start exec pool: %w", err)
+		}
+		CONFIG.pool = pool
 		return nil
 	}
 
 	CONFIG.Ready = func() error {
 
 		goldcrest.Register(django.HOOK_SERVER_ERROR, 0, django.ServerErrorHook(func(w http.ResponseWriter, r *http.Request, app *django.Application, err except.ServerError) {
-			if !IsMailserverError(err) {
+			if !merrs.IsMailserverError(err) {
 				return
 			}
 
-			var mErr = new(mailserverError)
+			var mErr = new(merrs.MailserverError)
 			if !errors.As(err, mErr) {
 				panic(err)
 			}
 
-			switch mErr.code {
-			case CodeUnknown:
-			case CodeNotRunning:
+			switch mErr.Code {
+			case merrs.CodeUnknown:
+			case merrs.CodeNotRunning:
 			}
 
 		}))
@@ -104,6 +119,9 @@ func NewAppConfig() django.AppConfig {
 
 	CONFIG.Routing = func(m mux.Multiplexer) {
 		var group = m.Any("", mux.NewHandler(CONFIG.ViewIndex), "mailmgmt")
+		group.Use(authentication.LoginRequiredMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			autherrors.Fail(http.StatusUnauthorized, "you need to be logged in.")
+		}))
 		var htmx = group.Get("/htmx", nil, "htmx")
 		//group.Use(authentication.LoginRequiredMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		//	http.Redirect(w, r, django.Reverse("auth:login"), 302)
@@ -116,8 +134,11 @@ func NewAppConfig() django.AppConfig {
 		htmxEmails := htmx.Get("/emails", views.Serve(ViewEmailsHtmx), "emails")
 		htmxEmails.Get("/add", views.Serve(ViewAddEmailHtmx), "add")
 		htmxEmails.Post("/add", views.Serve(ViewAddEmailHtmx))
-		htmxEmails.Get("/update", views.Serve(ViewUpdateEmailHtmx), "update")
-		htmxEmails.Post("/update", views.Serve(ViewUpdateEmailHtmx))
+		htmxEmails.Get("/update", views.Serve(ViewUpdateEmailPasswordHtmx), "update")
+		htmxEmails.Post("/update", views.Serve(ViewUpdateEmailPasswordHtmx))
+
+		aliases := group.Get("/aliases", views.Serve(ViewEmails), "aliases")
+		_ = aliases
 
 		htmxAliases := htmx.Get("/alias", views.Serve(ViewEmailsHtmx), "alias")
 		htmxAliases.Get("/add", views.Serve(ViewAddAliasHtmx), "add")
@@ -127,7 +148,7 @@ func NewAppConfig() django.AppConfig {
 	return CONFIG
 }
 
-func Cache() cache.Cache {
+func Cache() *mailmgmt_cache.MailMgmtCache {
 	var enabled = django.ConfigGet(
 		django.Global.Settings,
 		MAILSERVER_CACHING_ENABLED,

@@ -71,7 +71,7 @@ func (l *BoundFormModalView[FORM]) GetContext(req *http.Request) (c ctx.Context,
 			goto setupCtx
 		}
 
-		l.Form, valid, err = l.View.Validate(req, l.Form)
+		l.Form, valid, err = l.View.IsValid(req, l.Form)
 		if err != nil {
 			return c, err
 		}
@@ -199,7 +199,7 @@ type ModalFormView[FORM forms.Form] struct {
 	Render         func(*BoundFormModalView[FORM], io.Writer, *http.Request, ctx.Context) error
 	GetContext     func(*BoundFormModalView[FORM], *ctx.HTTPRequestContext) (ctx.Context, error)
 	GetForm        func(r *http.Request) (FORM, error)
-	Validate       func(*http.Request, FORM) (f FORM, valid bool, err error)
+	IsValid        func(*http.Request, FORM) (f FORM, valid bool, err error)
 }
 
 func (l *ModalFormView[T]) Bind(w http.ResponseWriter, req *http.Request) (views.View, error) {

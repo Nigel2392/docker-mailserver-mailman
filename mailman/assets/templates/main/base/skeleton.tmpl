@@ -36,10 +36,6 @@
     </head>
     <body id="body" class="{{$mode.Name}}" data-controller="document" data-document-modes-value="{{ json modes }}" data-document-navbar-link-selector-value="a.menu-item">
 
-        {{if .Data.messages}}
-            {{template "messages" . }}
-        {{end}}
-
         {{template "navbar.tmpl" .}}
 
         {{block "root" .}}
@@ -48,6 +44,12 @@
                     {{block "left" .}} {{template "left.tmpl" .}} {{end}}
                 </div>
                 <div class="main-center">
+                    <section class="messages" data-controller="messages">
+                        {{if .Data.messages}}
+                            {{template "messages" . }}
+                        {{end}}
+                    </section>
+
                     {{block "content" .}}{{end}}
                 </div>
             </div>

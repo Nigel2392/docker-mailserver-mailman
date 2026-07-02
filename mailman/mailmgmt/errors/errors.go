@@ -1,4 +1,4 @@
-package mailmgmt
+package errors
 
 var (
 	ErrUnknown    = MailServerError(CodeUnknown)

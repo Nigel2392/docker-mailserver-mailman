@@ -6,6 +6,7 @@ declare global {
     interface Window {
         Stimulus: Application;
         StimulusController: typeof Controller;
+        addMessage(type: string, text: string): void;
         i18n: {
             gettext(str: string, ...args: any): string,
             ngettext(singular: string, plural: string, n: any, ...args: any): string,

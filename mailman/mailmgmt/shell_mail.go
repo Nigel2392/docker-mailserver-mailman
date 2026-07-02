@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"al.essio.dev/pkg/shellescape"
+	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/logger"
 )
 
@@ -157,7 +158,7 @@ func (m MailCommand) CountTotal(query string) (int, error) {
 
 func (m MailCommand) Add(email string, passwd string) error {
 	if !_matchEmail.MatchString(email) {
-		return errors.New("email does not match predefined pattern")
+		return fmt.Errorf("invalid email syntax: %q: %w", email, errs.ErrInvalidSyntax)
 	}
 	_, _, err := m.CommandAdd(email, passwd).Exec()
 	return err

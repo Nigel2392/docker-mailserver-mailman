@@ -1,4 +1,4 @@
-package mailmgmt
+package errors
 
 import (
 	"errors"
@@ -14,40 +14,40 @@ const (
 	CodeAny = 0
 )
 
-type mailserverError struct {
-	code    ErrorCode
+type MailserverError struct {
+	Code    ErrorCode
 	pretext string
 	cause   error
 }
 
-func MailServerError(code ErrorCode) mailserverError {
-	return mailserverError{
-		code: code,
+func MailServerError(code ErrorCode) MailserverError {
+	return MailserverError{
+		Code: code,
 	}
 }
 
 func IsMailserverError(err error) bool {
-	var chk = mailserverError{
-		code: CodeAny,
+	var chk = MailserverError{
+		Code: CodeAny,
 	}
 	return errors.Is(err, chk)
 }
 
-func (m mailserverError) Wrap(pretext string) mailserverError {
+func (m MailserverError) Wrap(pretext string) MailserverError {
 	if m.pretext != "" {
 		pretext = fmt.Sprintf(
 			"%s: %s", pretext, m.pretext,
 		)
 	}
 
-	return mailserverError{
-		code:    m.code,
+	return MailserverError{
+		Code:    m.Code,
 		pretext: pretext,
 		cause:   m.cause,
 	}
 }
 
-func (m mailserverError) Wrapf(pretextFmt string, args ...any) mailserverError {
+func (m MailserverError) Wrapf(pretextFmt string, args ...any) MailserverError {
 	var pretext = fmt.Sprintf(pretextFmt, args...)
 
 	if m.pretext != "" {
@@ -56,22 +56,22 @@ func (m mailserverError) Wrapf(pretextFmt string, args ...any) mailserverError {
 		)
 	}
 
-	return mailserverError{
-		code:    m.code,
+	return MailserverError{
+		Code:    m.Code,
 		pretext: pretext,
 		cause:   m.cause,
 	}
 
 }
-func (m mailserverError) Cause(err error) mailserverError {
-	return mailserverError{
-		code:    m.code,
+func (m MailserverError) Cause(err error) MailserverError {
+	return MailserverError{
+		Code:    m.Code,
 		pretext: m.pretext,
 		cause:   errors.Join(m.cause, err),
 	}
 }
 
-func (m mailserverError) Error() string {
+func (m MailserverError) Error() string {
 	if m.cause == nil && m.pretext != "" {
 		return m.pretext
 	}
@@ -96,15 +96,15 @@ func (m mailserverError) Error() string {
 	return string(b)
 }
 
-func (m mailserverError) Is(other error) bool {
-	chk, ok := other.(mailserverError)
+func (m MailserverError) Is(other error) bool {
+	chk, ok := other.(MailserverError)
 	if !ok {
 		return false
 	}
 
-	return m.code == chk.code || m.code == CodeAny || chk.code == CodeAny
+	return m.Code == chk.Code || m.Code == CodeAny || chk.Code == CodeAny
 }
 
-func (m mailserverError) Unwrap() error {
+func (m MailserverError) Unwrap() error {
 	return m.cause
 }

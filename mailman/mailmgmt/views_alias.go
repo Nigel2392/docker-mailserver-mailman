@@ -55,7 +55,7 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 		)
 		return form, nil
 	},
-	Validate: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
+	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
 		var email = r.URL.Query().Get("email")
 		if email == "" {
 			return nil, false, errs.ErrFieldRequired

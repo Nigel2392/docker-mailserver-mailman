@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"al.essio.dev/pkg/shellescape"
+	"github.com/Nigel2392/go-django/src/core/errs"
 )
 
 type AliasCommand struct {
@@ -85,6 +86,10 @@ func (m AliasCommand) CommandGet(alias string) *Command {
 }
 
 func (m AliasCommand) Add(alias, target string) error {
+	if !_matchEmail.MatchString(alias) || !_matchEmail.MatchString(target) {
+		return fmt.Errorf("alias and target must be valid email addresses: %w", errs.ErrInvalidSyntax)
+	}
+
 	_, _, err := m.CommandAdd(alias, target).Exec()
 	return err
 }

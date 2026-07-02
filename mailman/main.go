@@ -18,6 +18,7 @@ import (
 	"github.com/Nigel2392/go-django/queries/src/migrator"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
+	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/contrib/session"
 
 	// "github.com/Nigel2392/go-django/src/contrib/translations"
@@ -125,11 +126,11 @@ func main() {
 
 	var app = django.App(
 		django.AppSettings(django.Config(map[string]interface{}{
-			django.APPVAR_ALLOWED_HOSTS:         []string{"*"},
-			django.APPVAR_DATABASE:              db,
-			django.APPVAR_HOST:                  MAILMAN_INTERFACE,
-			django.APPVAR_PORT:                  MAILMAN_PORT,
-			django.APPVAR_RECOVERER:             false,
+			django.APPVAR_ALLOWED_HOSTS: []string{"*"},
+			django.APPVAR_DATABASE:      db,
+			django.APPVAR_HOST:          MAILMAN_INTERFACE,
+			django.APPVAR_PORT:          MAILMAN_PORT,
+			// django.APPVAR_RECOVERER:             false,
 			auth.APPVAR_AUTH_EMAIL_LOGIN:        true,
 			migrator.APPVAR_MIGRATION_DIR:       "./migrations",
 			mailmgmt.MAILSERVER_CONTAINER_NAME:  GetEnv("MAILSERVER_CONTAINER_NAME"),
@@ -151,6 +152,7 @@ func main() {
 			mailmgmt.NewAppConfig,
 			sieve.NewAppConfig,
 			// translate.NewAppConfig,
+			messages.NewAppConfig,
 			NewAppConfig,
 		),
 	)

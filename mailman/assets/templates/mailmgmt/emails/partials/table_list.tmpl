@@ -21,11 +21,7 @@
             </span>
         </td>
         <td class="mailmgmt--table--data">
-            {{range $alias := $email.Aliases}}
-                <span class="mailmgmt-email-alias">
-                    {{ $alias }}
-                </span>
-            {{end}}
+            {{ $email.Aliases|len }}
         </td>
         <td class="mailmgmt--table--action">
             <div class="mailmgmt-list-item-actions">
