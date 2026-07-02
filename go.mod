@@ -4,8 +4,8 @@ go 1.26.3
 
 require (
 	al.essio.dev/pkg/shellescape v1.6.0
-	github.com/Nigel2392/go-django v1.7.1-0.20260701235447-8542771fc230
-	github.com/Nigel2392/go-django/queries v0.0.0-20260701235447-8542771fc230
+	github.com/Nigel2392/go-django v1.7.1-0.20260702143754-7ff11434f33c
+	github.com/Nigel2392/go-django/queries v0.0.0-20260702143754-7ff11434f33c
 	github.com/Nigel2392/goldcrest v1.0.4
 	github.com/Nigel2392/mux v1.6.1-0.20251030144343-070717da1ff8
 	github.com/a-h/templ v0.3.1020

@@ -23,7 +23,7 @@
                     {{ .Label }}
                 </div>
             
-                {{ $errors := .Errors }}
+                {{ $errors := $Field.Errors }}
                 {{ if gt (len $errors) 0 }}
                     <div class="field__errors">
                         <ul>
@@ -35,10 +35,10 @@
                 {{ end }}
                                 
                 <div class="form-field">
-                    {{ .Field }}
+                    {{ $Field.Field }}
                 </div>
 
-                {{ $help := .HelpText }}
+                {{ $help := $Field.HelpText }}
                 {{ if gt (len $help) 0 }}
                     <div class="form-help">
                         {{ $help }}

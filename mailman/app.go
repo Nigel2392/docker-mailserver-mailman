@@ -2,18 +2,22 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"html/template"
 	"net/http"
 	"time"
 
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
+	"github.com/Nigel2392/go-django/src/components"
+	cmpts "github.com/Nigel2392/go-django/src/contrib/admin/components"
 	"github.com/Nigel2392/go-django/src/core/assert"
 	"github.com/Nigel2392/go-django/src/core/filesystem"
 	"github.com/Nigel2392/go-django/src/core/filesystem/staticfiles"
 	"github.com/Nigel2392/go-django/src/core/filesystem/tpl"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/mux"
+	"github.com/a-h/templ"
 )
 
 func init() {
@@ -85,22 +89,47 @@ func NewAppConfig() django.AppConfig {
 		),
 	}
 
+	tpl.Add(tpl.Config{
+		AppName: "auth",
+		FS:      tplFS,
+		Bases: []string{
+			"auth/base.tmpl",
+			"main/base/messages.tmpl",
+		},
+		Matches: filesystem.MatchOr(
+			filesystem.MatchAnd(
+				filesystem.MatchPrefix("auth/"),
+				filesystem.MatchExt(".tmpl"),
+			),
+		),
+	})
+
+	components.Register("header", func(level int, headingText, subText string, extra ...any) templ.Component {
+		var comps []templ.Component
+		for _, c := range extra {
+			switch v := c.(type) {
+			case templ.Component:
+				comps = append(comps, v)
+			case []templ.Component:
+				if comps == nil {
+					comps = v
+				} else {
+					comps = append(comps, v...)
+				}
+			default:
+				panic(fmt.Sprintf(
+					"unexpected component type: %T", c,
+				))
+			}
+		}
+		return cmpts.Header(level, headingText, subText, comps...)
+	})
+
 	app.Init = func(settings django.Settings) error {
 
 		// Set up the static files for this app
 		// They are stored in the "assets/static" directory
-		staticfiles.AddFS(staticFS, filesystem.MatchAnd(
-			filesystem.MatchOr(
-				filesystem.MatchExt(".css"),
-				filesystem.MatchExt(".js"),
-				filesystem.MatchExt(".png"),
-				filesystem.MatchExt(".jpg"),
-				filesystem.MatchExt(".jpeg"),
-				filesystem.MatchExt(".svg"),
-				filesystem.MatchExt(".gif"),
-				filesystem.MatchExt(".ico"),
-			),
-		))
+		staticfiles.AddFS(staticFS, nil)
 
 		return nil
 	}

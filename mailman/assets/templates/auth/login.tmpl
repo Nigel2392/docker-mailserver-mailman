@@ -1,0 +1,64 @@
+{{ template "base" . }}
+
+{{ define "title" }}{{ T "Mailman Login" }}{{ end }}
+
+{{ define "content" }}
+    <div class="login-container-wrapper">
+        <div class="login-container">
+
+            {{ $headingText := (T "Login") }}
+            {{ $subText := (T "Login to access Mailman") }}
+            {{ component "header" 1 $headingText $subText }}
+
+            <form method="post" action="{{ .Get "LoginURL" }}">
+                {{ csrf_field }}
+
+                {{ $errors := .Data.Form.ErrorList }}
+                {{ if (gt (len $errors) 0) }}
+                    <ul class="error-list">
+                        {{ range $Error := $errors }}
+                            <li class="error"><p>{{ $Error }}</p></li>
+                        {{ end }}
+                    </ul>
+                {{ end }}
+                
+                {{ range $Field := .Data.Form.Fields }}
+                    <div class="form-group">
+                        <div class="form-label">
+                            {{ .Label }}
+                        </div>
+                    
+                        {{ $errors := $Field.Errors }}
+                        {{ if gt (len $errors) 0 }}
+                            <div class="field__errors">
+                                <ul>
+                                    {{ range $err := $errors }}
+                                        <li class="field__error">{{ $err }}</li>
+                                    {{ end }}
+                                </ul>
+                            </div>
+                        {{ end }}
+
+                        <div class="form-field">
+                            {{ .Field }}
+                        </div>
+                    
+                        {{ $help := $Field.HelpText }}
+                        {{ if gt (len $help) 0 }}
+                            <div class="form-help">
+                                {{ $help }}
+                            </div>
+                        {{ end }}
+                        
+                    </div>
+                {{ end }}
+                
+                <div class="w-100 d-flex">
+                    <input type="submit" class="btn btn-standout" value="{{ T "Submit" }}">
+                </div>
+
+            </form>
+        </div>
+    </div>
+{{ end }}
+

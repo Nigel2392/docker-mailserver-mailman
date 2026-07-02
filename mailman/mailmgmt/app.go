@@ -10,7 +10,6 @@ import (
 
 	mailmgmt_cache "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
 	merrs "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/errors"
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/shell"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
 	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
@@ -35,7 +34,7 @@ type MailManagementConfig struct {
 	*apps.AppConfig
 	Docker                  *client.Client
 	MailServerContainerName string
-	pool                    *shell.ExecPool
+	//pool                    *shell.ExecPool
 }
 
 func Setup() *SetupCommand {
@@ -43,7 +42,7 @@ func Setup() *SetupCommand {
 }
 
 func SetupCtx(ctx context.Context) *SetupCommand {
-	ctx = shell.ContextWithExecPool(ctx, CONFIG.pool)
+	// ctx = shell.ContextWithExecPool(ctx, CONFIG.pool)
 	return CONFIG.CommandSetup(ctx)
 }
 
@@ -73,7 +72,7 @@ func NewAppConfig() django.AppConfig {
 		}
 
 		// Check mailserver exists
-		inspectResult, err := CONFIG.Docker.ContainerInspect(
+		_, err = CONFIG.Docker.ContainerInspect(
 			ctx, CONFIG.MailServerContainerName,
 			client.ContainerInspectOptions{},
 		)
@@ -84,15 +83,15 @@ func NewAppConfig() django.AppConfig {
 			)
 		}
 
-		if !inspectResult.Container.State.Running {
-
-		}
-
-		_, pool, err := shell.StartPool(context.Background(), CONFIG.Docker, CONFIG.MailServerContainerName)
-		if err != nil {
-			return fmt.Errorf("could not start exec pool: %w", err)
-		}
-		CONFIG.pool = pool
+		//	if !inspectResult.Container.State.Running {
+		//
+		//	}
+		//
+		//	_, pool, err := shell.StartPool(context.Background(), CONFIG.Docker, CONFIG.MailServerContainerName)
+		//	if err != nil {
+		//		return fmt.Errorf("could not start exec pool: %w", err)
+		//	}
+		//	CONFIG.pool = pool
 		return nil
 	}
 

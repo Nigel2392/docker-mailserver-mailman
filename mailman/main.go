@@ -53,6 +53,11 @@ func GetEnvT[T any](key string, default_ T, convert func(in string) (out T, err 
 
 func main() {
 	var (
+		RUNNING_IN_DOCKER = GetEnvT("DOCKER", false, strconv.ParseBool)
+
+		MAILSERVER_CONTAINER_NAME  = GetEnv("MAILSERVER_CONTAINER_NAME")
+		MAILSERVER_CACHING_ENABLED = GetEnvT("MAILSERVER_CACHING_ENABLED", true, strconv.ParseBool)
+
 		MAILMAN_INTERFACE = GetEnv("MAILMAN_INTERFACE", "127.0.0.1")
 		MAILMAN_PORT      = GetEnv("MAILMAN_PORT", "8080")
 
@@ -130,11 +135,13 @@ func main() {
 			django.APPVAR_DATABASE:      db,
 			django.APPVAR_HOST:          MAILMAN_INTERFACE,
 			django.APPVAR_PORT:          MAILMAN_PORT,
+			django.APPVAR_DEBUG:         !RUNNING_IN_DOCKER,
 			// django.APPVAR_RECOVERER:             false,
 			auth.APPVAR_AUTH_EMAIL_LOGIN:        true,
+			auth.APPVAR_ALLOW_USER_REGISTER:     false,
 			migrator.APPVAR_MIGRATION_DIR:       "./migrations",
-			mailmgmt.MAILSERVER_CONTAINER_NAME:  GetEnv("MAILSERVER_CONTAINER_NAME"),
-			mailmgmt.MAILSERVER_CACHING_ENABLED: GetEnvT("MAILSERVER_CACHING_ENABLED", true, strconv.ParseBool),
+			mailmgmt.MAILSERVER_CONTAINER_NAME:  MAILSERVER_CONTAINER_NAME,
+			mailmgmt.MAILSERVER_CACHING_ENABLED: MAILSERVER_CACHING_ENABLED,
 			sieve.MAILMAN_SIEVE_TEMPLATE:        MAILMAN_SIEVE_TEMPLATE,
 		})),
 		django.AppLogger(&logger.Logger{
@@ -156,6 +163,10 @@ func main() {
 			NewAppConfig,
 		),
 	)
+
+	if !RUNNING_IN_DOCKER {
+		logger.Warn("Executing in DEBUG mode.")
+	}
 
 	checks.Shutup("migrator.engine.too_many_migrations", true)
 

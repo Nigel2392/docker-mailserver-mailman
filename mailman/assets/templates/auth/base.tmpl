@@ -1,0 +1,37 @@
+{{define "base"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="{{ static "auth/css/auth.css" }}">
+
+        <title>{{block "title" .}}MailMan{{end}}</title>
+        <link rel="icon" href="{{ block "logourl" .}}{{ static "mailman.png" }}{{end}}" type="image/png">
+
+        {{block "css" .}}{{end}}
+    </head>
+    <body id="body">
+
+        {{block "root" .}}
+            <div class="main text">
+                <div class="main-center">
+                    <section class="messages" data-controller="messages">
+                        {{if .Data.messages}}
+                            {{template "messages" . }}
+                        {{end}}
+                    </section>
+
+                    {{block "content" .}}{{end}}
+                </div>
+            </div>
+        {{end}}
+
+        {{block "js" .}}
+        
+        {{end}}
+    </body>
+</html>
+{{end}}
