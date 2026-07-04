@@ -1,7 +1,7 @@
 # Docker Mailserver Mailman
 
 <center>
-    ![1783175501783](image/README/1783175501783.png)
+    <img src="image/README/1783175501783.png" alt="Docker Mailserver Mailman (Image)">
 </center>
 
 Interface to manage docker mailserver email accounts.
