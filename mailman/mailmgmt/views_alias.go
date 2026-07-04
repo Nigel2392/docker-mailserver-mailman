@@ -3,9 +3,14 @@ package mailmgmt
 import (
 	"fmt"
 	"net/http"
+	"net/mail"
 
+	queries "github.com/Nigel2392/go-django/queries/src"
+	"github.com/Nigel2392/go-django/queries/src/drivers"
 	django "github.com/Nigel2392/go-django/src"
+	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/Nigel2392/go-django/src/core/ctx"
+	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/forms/fields"
@@ -74,7 +79,7 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 	AllowedMethods: []string{"GET", "POST"},
 	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
 		return fmt.Sprintf("%s?email=%s",
-			django.Reverse("mailmgmt:htmx:aliases:add"),
+			django.Reverse("mailmgmt:htmx:alias:add"),
 			r.URL.Query().Get("email"),
 		)
 	},
@@ -104,26 +109,38 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 		)
 		return form, nil
 	},
-	//	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
-	//		var email = r.URL.Query().Get("email")
-	//		if email == "" {
-	//			return nil, false, errs.ErrFieldRequired
-	//		}
-	//
-	//		var addrObj, err = SetupCtx(r.Context()).Email().Get(email)
-	//		if err != nil {
-	//			return nil, false, err
-	//		}
-	//
-	//		var (
-	//			c = f.CleanedData()
-	//			a = c["alias"].(*mail.Address)
-	//		)
-	//
-	//		if err := SetupCtx(r.Context()).Alias().Add(a.Address, addrObj.Email); err != nil {
-	//			return f, true, err
-	//		}
-	//
-	//		return f, true, nil
-	//	},
+	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
+		var email = r.URL.Query().Get("email")
+		if email == "" {
+			return nil, false, errs.ErrFieldRequired
+		}
+
+		var user, err = queries.
+			GetQuerySetWithContext(r.Context(), &auth.User{}).
+			Filter("Email__iexact", email).
+			Get()
+		if err != nil {
+			return nil, false, err
+		}
+
+		var c = f.CleanedData()
+		var ma = &MailAlias{
+			Source: (*drivers.Email)(c["alias"].(*mail.Address)),
+		}
+
+		ma, _, err = queries.
+			GetQuerySetWithContext(r.Context(), &MailAlias{}).
+			Filter("Source__iexact", ma.Source.Address).
+			GetOrCreate(ma)
+		if err != nil {
+			return nil, false, err
+		}
+
+		_, err = ma.Destination.Objects().AddTarget(user.Object)
+		if err != nil {
+			return nil, false, err
+		}
+
+		return f, true, nil
+	},
 }

@@ -97,12 +97,12 @@ func main() {
 
 	var app = django.App(
 		django.AppSettings(django.Config(map[string]interface{}{
-			django.APPVAR_ALLOWED_HOSTS: []string{"*"},
-			django.APPVAR_DATABASE:      db,
-			django.APPVAR_HOST:          MAILMAN_INTERFACE,
-			django.APPVAR_PORT:          MAILMAN_PORT,
-			django.APPVAR_DEBUG:         !RUNNING_IN_DOCKER,
-			// django.APPVAR_RECOVERER:             false,
+			django.APPVAR_ALLOWED_HOSTS:         []string{"*"},
+			django.APPVAR_DATABASE:              db,
+			django.APPVAR_HOST:                  MAILMAN_INTERFACE,
+			django.APPVAR_PORT:                  MAILMAN_PORT,
+			django.APPVAR_DEBUG:                 !RUNNING_IN_DOCKER,
+			django.APPVAR_RECOVERER:             false,
 			auth.APPVAR_AUTH_EMAIL_LOGIN:        true,
 			auth.APPVAR_ALLOW_USER_REGISTER:     false,
 			migrator.APPVAR_MIGRATION_DIR:       "./migrations",

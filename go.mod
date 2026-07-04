@@ -4,15 +4,14 @@ go 1.26.3
 
 require (
 	github.com/Nigel2392/cache v1.0.4
-	github.com/Nigel2392/go-django v1.7.1-0.20260704210147-69e52ff2cc32
-	github.com/Nigel2392/go-django/queries v0.0.0-20260704210147-69e52ff2cc32
+	github.com/Nigel2392/go-django v1.7.1-0.20260704223350-2dae6ecd5d2f
+	github.com/Nigel2392/go-django/queries v0.0.0-20260704223350-2dae6ecd5d2f
 	github.com/Nigel2392/goldcrest v1.0.4
 	github.com/Nigel2392/mux v1.6.1-0.20251030144343-070717da1ff8
 	github.com/a-h/templ v0.3.1020
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-ldap/ldap/v3 v3.4.13
 	github.com/google/uuid v1.6.0
-	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/vjeantet/goldap v0.0.0-20260218214109-3dcf54ec83d6
@@ -59,6 +58,7 @@ require (
 	github.com/lestrrat-go/strftime v1.1.1 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
+	github.com/moby/moby/api v1.55.0 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect

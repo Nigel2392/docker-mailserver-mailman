@@ -47,6 +47,7 @@ func NewAppConfig() django.AppConfig {
 
 	CONFIG.ModelObjects = []attrs.Definer{
 		&MailAlias{},
+		&MailAliasUser{},
 		&UserMailQuota{},
 	}
 
