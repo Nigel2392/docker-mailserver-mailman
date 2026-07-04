@@ -26,17 +26,17 @@ func Query(ctx context.Context) (*SieveConfigData, error) {
 		ctx = context.Background()
 	}
 
-	bannedEmailRows, err := queries.GetQuerySet(&BannedEmail{}).Select("Email", "Action").All()
+	bannedEmailRows, err := queries.GetQuerySet(&BannedEmail{}).All()
 	if err != nil {
 		return nil, err
 	}
 
-	forwardedRows, err := queries.GetQuerySet(&ForwardedEmail{}).Select("Source", "Destination", "KeepCopy").All()
+	forwardedRows, err := queries.GetQuerySet(&ForwardedEmail{}).All()
 	if err != nil {
 		return nil, err
 	}
 
-	vacationRuleRows, err := queries.GetQuerySet(&VacationRule{}).Select("ForEmail", "Enabled", "Days", "Subject", "Message").All()
+	vacationRuleRows, err := queries.GetQuerySet(&VacationRule{}).Select("*", "For.*").All()
 	if err != nil {
 		return nil, err
 	}

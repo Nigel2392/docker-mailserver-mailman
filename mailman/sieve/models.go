@@ -2,17 +2,25 @@ package sieve
 
 import (
 	"github.com/Nigel2392/go-django/queries/src/drivers"
+	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/trans"
 )
 
 type BannedEmail struct {
+	ID     drivers.Uint
 	Email  *drivers.Email
 	Action string
 }
 
 func (b *BannedEmail) FieldDefs() attrs.Definitions {
 	return attrs.Define[attrs.Definer, attrs.Field](b,
+		attrs.NewField(b, "ID", &attrs.FieldConfig{
+			Label:   trans.S("ID"),
+			Primary: true,
+			Null:    false,
+			Blank:   false,
+		}),
 		attrs.NewField(b, "Email", &attrs.FieldConfig{
 			Label: trans.S("Email"),
 			Null:  false,
@@ -27,12 +35,19 @@ func (b *BannedEmail) FieldDefs() attrs.Definitions {
 }
 
 type BannedDomain struct {
+	ID     drivers.Uint
 	Domain string
 	Action string
 }
 
 func (b *BannedDomain) FieldDefs() attrs.Definitions {
 	return attrs.Define[attrs.Definer, attrs.Field](b,
+		attrs.NewField(b, "ID", &attrs.FieldConfig{
+			Label:   trans.S("ID"),
+			Primary: true,
+			Null:    false,
+			Blank:   false,
+		}),
 		attrs.NewField(b, "Domain", &attrs.FieldConfig{
 			Label:    trans.S("Domain"),
 			HelpText: trans.S("e.g., spam.com (do not include the @ symbol)"),
@@ -48,6 +63,7 @@ func (b *BannedDomain) FieldDefs() attrs.Definitions {
 }
 
 type ForwardedEmail struct {
+	ID          drivers.Uint
 	Source      *drivers.Email
 	Destination *drivers.Email
 	KeepCopy    bool // if true, adds 'keep;' to keep mail in inbox
@@ -55,6 +71,12 @@ type ForwardedEmail struct {
 
 func (b *ForwardedEmail) FieldDefs() attrs.Definitions {
 	return attrs.Define[attrs.Definer, attrs.Field](b,
+		attrs.NewField(b, "ID", &attrs.FieldConfig{
+			Label:   trans.S("ID"),
+			Primary: true,
+			Null:    false,
+			Blank:   false,
+		}),
 		attrs.NewField(b, "Source", &attrs.FieldConfig{
 			Label: trans.S("Source"),
 			Null:  false,
@@ -72,19 +94,27 @@ func (b *ForwardedEmail) FieldDefs() attrs.Definitions {
 }
 
 type VacationRule struct {
-	ForEmail string // The specific email/alias this applies to, e.g., "alice@example.com"
-	Enabled  bool
-	Days     int // Minimum days between replies to same sender (default 7)
-	Subject  string
-	Message  string // Use \n for newlines
+	ID      drivers.Uint
+	For     *auth.User
+	Enabled bool
+	Days    int // Minimum days between replies to same sender (default 7)
+	Subject string
+	Message string // Use \n for newlines
 }
 
 func (b *VacationRule) FieldDefs() attrs.Definitions {
 	return attrs.Define[attrs.Definer, attrs.Field](b,
-		attrs.NewField(b, "ForEmail", &attrs.FieldConfig{
-			Label: trans.S("ForEmail"),
-			Null:  false,
-			Blank: false,
+		attrs.NewField(b, "ID", &attrs.FieldConfig{
+			Label:   trans.S("ID"),
+			Primary: true,
+			Null:    false,
+			Blank:   false,
+		}),
+		attrs.NewField(b, "For", &attrs.FieldConfig{
+			Label:       trans.S("For"),
+			Null:        false,
+			Blank:       false,
+			RelOneToOne: attrs.Relate(&auth.User{}, "", nil),
 		}),
 		attrs.NewField(b, "Enabled", &attrs.FieldConfig{
 			Label: trans.S("Enabled"),
