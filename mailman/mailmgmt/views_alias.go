@@ -1,26 +1,21 @@
 package mailmgmt
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"net/mail"
-	"strconv"
 
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/core/ctx"
-	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/forms/fields"
 )
 
-var ViewAliases = &ListView[ListedAddress]{
+var ViewAliases = &ListView[*MailAlias]{
 	RedirectOnMissingQuery: true,
 	BaseKey:                "main",
 	Template:               "mailmgmt/emails/alias.tmpl",
-	GetContext: func(blv *BoundListView[ListedAddress], hc *ctx.HTTPRequestContext) (ctx.Context, error) {
+	GetContext: func(blv *BoundListView[*MailAlias], hc *ctx.HTTPRequestContext) (ctx.Context, error) {
 		// messages.Debug(hc.Request(), "Debug message!")
 		// messages.Info(hc.Request(), "Info message!")
 		// messages.Success(hc.Request(), "Success message!")
@@ -30,43 +25,45 @@ var ViewAliases = &ListView[ListedAddress]{
 	},
 }
 
-var ViewAliasesHtmx = &ListView[AliasListResult]{
+var ViewAliasesHtmx = &ListView[*MailAlias]{
 	ReverseURL: "mailmgmt:aliases",
 	Template:   "mailmgmt/aliases/partials/table_list.tmpl",
-	GetCount: func(b *BoundListView[AliasListResult], r *http.Request) (int, error) {
-		return cache.GetItem(
-			r.Context(),
-			CACHE_TIME,
-			-1, "emails", []string{"aliases", "count", hashStr(b.Query)},
-			func(ctx context.Context) (int, error) {
-				return SetupCtx(r.Context()).Alias().CountTotal(b.Query)
-			},
-		)
+	GetCount: func(b *BoundListView[*MailAlias], r *http.Request) (int, error) {
+		//	return cache.GetItem(
+		//		r.Context(),
+		//		CACHE_TIME,
+		//		-1, "emails", []string{"aliases", "count", hashStr(b.Query)},
+		//		func(ctx context.Context) (int, error) {
+		//			return SetupCtx(r.Context()).Alias().CountTotal(b.Query)
+		//		},
+		//	)
+		return 0, nil
 	},
-	GetObjects: func(b *BoundListView[AliasListResult], r *http.Request, amount, offset int) ([]AliasListResult, error) {
-		return cache.GetItem(
-			r.Context(),
-			CACHE_TIME,
-			-1, "emails", []string{"aliases", "list", strconv.Itoa(b.Page), strconv.Itoa(b.Limit), hashStr(b.Query)},
-			func(ctx context.Context) ([]AliasListResult, error) {
-				var l, err = SetupCtx(r.Context()).Alias().List(&AliasListConfig{
-					Page:        b.Page,
-					Limit:       b.Limit,
-					SearchQuery: b.Query,
-				})
-				if err != nil {
-					return nil, err
-				}
-				var res = make([]AliasListResult, 0, l.Len())
-				for k, v := range l.Iterator() {
-					res = append(res, AliasListResult{
-						Alias:   k,
-						Targets: v,
-					})
-				}
-				return res, nil
-			},
-		)
+	GetObjects: func(b *BoundListView[*MailAlias], r *http.Request, amount, offset int) ([]*MailAlias, error) {
+		//	return cache.GetItem(
+		//		r.Context(),
+		//		CACHE_TIME,
+		//		-1, "emails", []string{"aliases", "list", strconv.Itoa(b.Page), strconv.Itoa(b.Limit), hashStr(b.Query)},
+		//		func(ctx context.Context) ([]*MailAlias, error) {
+		//			var l, err = SetupCtx(r.Context()).Alias().List(&AliasListConfig{
+		//				Page:        b.Page,
+		//				Limit:       b.Limit,
+		//				SearchQuery: b.Query,
+		//			})
+		//			if err != nil {
+		//				return nil, err
+		//			}
+		//			var res = make([]*MailAlias, 0, l.Len())
+		//			for k, v := range l.Iterator() {
+		//				res = append(res, *MailAlias{
+		//					Alias:   k,
+		//					Targets: v,
+		//				})
+		//			}
+		//			return res, nil
+		//		},
+		//	)
+		return nil, nil
 	},
 }
 
@@ -107,26 +104,26 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 		)
 		return form, nil
 	},
-	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
-		var email = r.URL.Query().Get("email")
-		if email == "" {
-			return nil, false, errs.ErrFieldRequired
-		}
-
-		var addrObj, err = SetupCtx(r.Context()).Email().Get(email)
-		if err != nil {
-			return nil, false, err
-		}
-
-		var (
-			c = f.CleanedData()
-			a = c["alias"].(*mail.Address)
-		)
-
-		if err := SetupCtx(r.Context()).Alias().Add(a.Address, addrObj.Email); err != nil {
-			return f, true, err
-		}
-
-		return f, true, nil
-	},
+	//	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
+	//		var email = r.URL.Query().Get("email")
+	//		if email == "" {
+	//			return nil, false, errs.ErrFieldRequired
+	//		}
+	//
+	//		var addrObj, err = SetupCtx(r.Context()).Email().Get(email)
+	//		if err != nil {
+	//			return nil, false, err
+	//		}
+	//
+	//		var (
+	//			c = f.CleanedData()
+	//			a = c["alias"].(*mail.Address)
+	//		)
+	//
+	//		if err := SetupCtx(r.Context()).Alias().Add(a.Address, addrObj.Email); err != nil {
+	//			return f, true, err
+	//		}
+	//
+	//		return f, true, nil
+	//	},
 }

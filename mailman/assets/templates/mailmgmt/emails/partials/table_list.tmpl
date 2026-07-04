@@ -56,7 +56,7 @@
 {{ end }}
 
 <div id="mailmgmt-paginator" class="mailmgmt-list-paginator" hx-swap-oob="true">
-    {{ (.Get "view.paginator.object").HTML "page" 5 .Request.URL.Query }}
+    {{ (.Get "view_paginator_object").HTML "page" 5 .Request.URL.Query }}
 </div>
 
 {{ end }}

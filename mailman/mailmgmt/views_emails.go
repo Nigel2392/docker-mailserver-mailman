@@ -1,7 +1,6 @@
 package mailmgmt
 
 import (
-	"context"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -10,15 +9,18 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
+	queries "github.com/Nigel2392/go-django/queries/src"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
+	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/forms/fields"
 	"github.com/Nigel2392/go-django/src/forms/widgets"
+	"github.com/Nigel2392/go-django/src/views"
+	"github.com/Nigel2392/go-django/src/views/list"
 )
 
 const CACHE_TIME = time.Second * 300 // 5 minutes
@@ -32,46 +34,71 @@ func hashStr(s string) string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-var ViewEmails = &ListView[ListedAddress]{
-	RedirectOnMissingQuery: true,
-	BaseKey:                "main",
-	Template:               "mailmgmt/emails/emails.tmpl",
-	GetContext: func(blv *BoundListView[ListedAddress], hc *ctx.HTTPRequestContext) (ctx.Context, error) {
-		// messages.Debug(hc.Request(), "Debug message!")
-		// messages.Info(hc.Request(), "Info message!")
-		// messages.Success(hc.Request(), "Success message!")
-		// messages.Warning(hc.Request(), "Warning message!")
-		// messages.Error(hc.Request(), "Error message!")
-		return hc, nil
+var ViewEmails = &list.View[*auth.User]{
+	AllowedMethods:  []string{http.MethodGet},
+	BaseTemplateKey: "main",
+	TemplateName:    "mailmgmt/emails/emails.tmpl",
+	PageParam:       "page",
+	AmountParam:     "limit",
+	MaxAmount:       DEFAULT_LIMIT_CHOICES[len(DEFAULT_LIMIT_CHOICES)-1],
+	DefaultAmount:   DEFAULT_LIMIT_CHOICES[0],
+	Mixins: func(r *http.Request, v *list.View[*auth.User]) []views.View {
+		return []views.View{SetupViewMixin{Func: func(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
+			r = r.WithContext(list.SetAllowListRowSelect(r.Context(), true))
+			return w, r
+		}}}
 	},
-}
-
-var ViewEmailsHtmx = &ListView[ListedAddress]{
-	ReverseURL: "mailmgmt:emails",
-	Template:   "mailmgmt/emails/partials/table_list.tmpl",
-	GetCount: func(b *BoundListView[ListedAddress], r *http.Request) (int, error) {
-		return cache.GetItem(
-			r.Context(),
-			CACHE_TIME,
-			-1, "emails", []string{"count", hashStr(b.Query)},
-			func(ctx context.Context) (int, error) {
-				return SetupCtx(r.Context()).Email().CountTotal(b.Query)
+	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*auth.User]) (ctx.Context, error) {
+		c := ctx.RequestContext(r)
+		pageValue, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		amountValue, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		queryValue := r.URL.Query().Get("search")
+		c.Set("view.page", pageValue)
+		c.Set("view.limit", amountValue)
+		c.Set("view.query", queryValue)
+		c.Set("view.limitChoices", DEFAULT_LIMIT_CHOICES)
+		return c, nil
+	},
+	TitleFieldColumn: func(col list.ListColumn[*auth.User]) list.ListColumn[*auth.User] {
+		return list.RowSelectColumn(
+			"list-form",
+			nil,
+			nil,
+			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *auth.User) string { return "" }),
+			map[string]any{
+				"data-table-list-target": "selectAll",
+				"data-action":            "change->table-list#toggleAllCheckboxes",
+			},
+			map[string]any{
+				"data-table-list-target": "checkbox",
+				"data-action":            "change->table-list#updateSelectAll",
 			},
 		)
 	},
-	GetObjects: func(b *BoundListView[ListedAddress], r *http.Request, amount, offset int) ([]ListedAddress, error) {
-		return cache.GetItem(
-			r.Context(),
-			CACHE_TIME,
-			-1, "emails", []string{"list", strconv.Itoa(b.Page), strconv.Itoa(b.Limit), hashStr(b.Query)},
-			func(ctx context.Context) ([]ListedAddress, error) {
-				return SetupCtx(r.Context()).Email().List(&EmailListConfig{
-					Page:        b.Page,
-					Limit:       b.Limit,
-					SearchQuery: b.Query,
-				})
+	ListColumns: []list.ListColumn[*auth.User]{
+		list.Column[*auth.User](
+			trans.S("Email"),
+			"Email",
+		),
+		list.FuncColumn(
+			trans.S("Name"),
+			func(r *http.Request, defs attrs.Definitions, row *auth.User) interface{} {
+				return fmt.Sprintf("%s %s", row.FirstName, row.LastName)
 			},
-		)
+		),
+		list.BooleanFieldColumn[*auth.User](
+			trans.S("IsAdministrator"),
+			"IsAdministrator",
+		),
+		list.BooleanFieldColumn[*auth.User](
+			trans.S("IsActive"),
+			"IsActive",
+		),
+		list.DateTimeFieldColumn[*auth.User](
+			trans.DEFAULT_TIME_FORMAT,
+			trans.S("LastLogin"),
+			"LastLogin",
+		),
 	},
 }
 
@@ -132,20 +159,20 @@ var ViewAddEmailHtmx = &ModalFormView[forms.Form]{
 		})
 		return form, nil
 	},
-	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
-		var (
-			c   = f.CleanedData()
-			e   = c["email"].(*mail.Address)
-			pwd = c["password"].(string)
-		)
-
-		if err := SetupCtx(r.Context()).Email().Add(e.Address, pwd); err != nil {
-			return f, true, err
-		}
-
-		_, err := cache.RollOver(r.Context(), "emails", time.Hour)
-		return f, true, err
-	},
+	//IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
+	//	var (
+	//		c   = f.CleanedData()
+	//		e   = c["email"].(*mail.Address)
+	//		pwd = c["password"].(string)
+	//	)
+	//
+	//	if err := SetupCtx(r.Context()).Email().Add(e.Address, pwd); err != nil {
+	//		return f, true, err
+	//	}
+	//
+	//	_, err := cache.RollOver(r.Context(), "emails", time.Hour)
+	//	return f, true, err
+	//},
 }
 
 var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
@@ -210,56 +237,49 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 		})
 		return form, nil
 	},
-	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
-		var email = r.URL.Query().Get("email")
-		if email == "" {
-			return nil, false, errs.ErrFieldRequired
-		}
-
-		var addrObj, err = SetupCtx(r.Context()).Email().Get(email)
-		if err != nil {
-			return nil, false, err
-		}
-
-		var (
-			c   = f.CleanedData()
-			pwd = c["password"].(string)
-		)
-
-		if err := SetupCtx(r.Context()).Email().Update(addrObj.Email, pwd); err != nil {
-			return f, true, err
-		}
-
-		return f, true, err
-	},
+	//IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
+	//	var email = r.URL.Query().Get("email")
+	//	if email == "" {
+	//		return nil, false, errs.ErrFieldRequired
+	//	}
+	//
+	//	var addrObj, err = SetupCtx(r.Context()).Email().Get(email)
+	//	if err != nil {
+	//		return nil, false, err
+	//	}
+	//
+	//	var (
+	//		c   = f.CleanedData()
+	//		pwd = c["password"].(string)
+	//	)
+	//
+	//	if err := SetupCtx(r.Context()).Email().Update(addrObj.Email, pwd); err != nil {
+	//		return f, true, err
+	//	}
+	//
+	//	return f, true, err
+	//},
 }
 
-var ViewDeleteEmail = &DeleteView[*ListedAddress]{
+var ViewDeleteEmail = &DeleteView[*auth.User]{
 	BaseKey:  "main",
 	Template: "mailmgmt/emails/delete_email.tmpl",
 	NextURL:  "mailmgmt:emails",
-	GetObject: func(bdv *BoundDeleteView[*ListedAddress], r *http.Request) (*ListedAddress, error) {
+	GetObject: func(bdv *BoundDeleteView[*auth.User], r *http.Request) (*auth.User, error) {
 		var eml, err = mail.ParseAddress(r.URL.Query().Get("email"))
 		if err != nil {
 			return nil, errs.ErrInvalidSyntax
 		}
 
-		return cache.GetItem(
-			r.Context(),
-			CACHE_TIME,
-			-1, "emails", []string{"users", eml.Address},
-			func(ctx context.Context) (*ListedAddress, error) {
-				return SetupCtx(ctx).Email().Get(eml.Address)
-			},
-		)
-	},
-	Delete: func(bdv *BoundDeleteView[*ListedAddress], r *http.Request, la *ListedAddress) (err error) {
-		err = SetupCtx(r.Context()).Email().Delete(la.Email)
-		if err != nil {
-			return err
-		}
+		row, err := auth.GetUserQuerySet().
+			WithContext(r.Context()).
+			Filter("email__iexact", eml).
+			Get()
 
-		_, err = cache.RollOver(r.Context(), "emails", time.Hour)
-		return err
+		return row.Object, err
+	},
+	Delete: func(bdv *BoundDeleteView[*auth.User], r *http.Request, la *auth.User) (err error) {
+		la.IsActive = false
+		return la.Save(r.Context())
 	},
 }

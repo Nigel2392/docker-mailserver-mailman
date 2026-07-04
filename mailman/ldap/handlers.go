@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	queries "github.com/Nigel2392/go-django/queries/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/go-ldap/ldap/v3"
@@ -144,7 +145,7 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	defer cancel()
 
 	if aliasToFind := walkASTForAttribute(r.Filter(), "otherMailbox"); aliasToFind != "" {
-		aliasRow, err := queries.GetQuerySetWithContext(ctx, &MailAlias{}).
+		aliasRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.MailAlias{}).
 			Filter("Source__iexact", aliasToFind).
 			Filter("IsActive", true).
 			First()

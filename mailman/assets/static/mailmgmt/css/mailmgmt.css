@@ -106,7 +106,7 @@
     overflow-x: hidden;
     border: var(--b);
 }
-table.mailmgmt-list-table {
+table.list {
     border: 0;
     border-spacing: 0;
     border-collapse: collapse;
@@ -115,50 +115,50 @@ table.mailmgmt-list-table {
     width: 100%;
     table-layout: fixed;
 }
-table.mailmgmt-list-table th:first-child input[type="checkbox"] {
+table.list th:first-child input[type="checkbox"] {
     width: 1.2rem;
     height: 1.2rem;
 }
-table.mailmgmt-list-table td:first-child input[type="checkbox"] {
+table.list td:first-child input[type="checkbox"] {
     width: 1.2rem;
     height: 1.2rem;
 }
-table.mailmgmt-list-table th,
-table.mailmgmt-list-table td {
+table.list th,
+table.list td {
     height: 2rem;
     padding: 0;
     margin: 0;
 }
-table.mailmgmt-list-table th:nth-child(1),
-table.mailmgmt-list-table td:nth-child(1) {
+table.list th:nth-child(1),
+table.list td:nth-child(1) {
     text-align: center;
     width: 3rem;
 }
-table.mailmgmt-list-table th:nth-child(2),
-table.mailmgmt-list-table td:nth-child(2) {
+table.list th:nth-child(2),
+table.list td:nth-child(2) {
     width: 25%;
 }
 
-table.mailmgmt-list-table td:nth-child(2) {
+table.list td:nth-child(2) {
     text-wrap: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
     width: inherit;
 }
 
-table.mailmgmt-list-table th:nth-child(3),
-table.mailmgmt-list-table td:nth-child(3) {
+table.list th:nth-child(3),
+table.list td:nth-child(3) {
     width: max(3rem, 15%); 
     text-align: center;
 }
 
-table.mailmgmt-list-table th:nth-child(4),
-table.mailmgmt-list-table td:nth-child(4) {
+table.list th:nth-child(4),
+table.list td:nth-child(4) {
     width: 45%;
 }
 
-table.mailmgmt-list-table th:nth-child(5),
-table.mailmgmt-list-table td:nth-child(5) {
+table.list th:nth-child(5),
+table.list td:nth-child(5) {
 }
 .mailmgmt-list-table--head {
     text-align: left;
@@ -171,8 +171,8 @@ table.mailmgmt-list-table td:nth-child(5) {
 .mailmgmt--table--header {
 
 }
-.mailmgmt-list-table--head,
-.mailmgmt-list-table--item {
+table.list .list-header,
+table.list .column-group {
     --b-s: 0px 1px 1px rgba(var(--color-primary-rgb),0.3);
     --b-s-active: 0px 3px 3px rgba(var(--color-primary-rgb),0.3);
     border-bottom: 1px dotted rgba(var(--color-primary-accent-rgb), 0.3);
@@ -184,7 +184,7 @@ table.mailmgmt-list-table td:nth-child(5) {
     animation: tableListLoading 1s infinite ease-in-out;
     animation-delay: calc(var(--row-index) * 0.5s);
 }
-.mailmgmt-list-table--item:hover {
+table.list .column-group:hover {
     box-shadow: var(--b-s-active);
 }
 .mailmgmt--table--data--check {

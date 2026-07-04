@@ -3,9 +3,9 @@ module github.com/Nigel2392/docker-mailserver-mailman
 go 1.26.3
 
 require (
-	github.com/Nigel2392/cache v1.0.1
-	github.com/Nigel2392/go-django v1.7.1-0.20260704155041-cc4559d3fe40
-	github.com/Nigel2392/go-django/queries v0.0.0-20260704155041-cc4559d3fe40
+	github.com/Nigel2392/cache v1.0.4
+	github.com/Nigel2392/go-django v1.7.1-0.20260704210147-69e52ff2cc32
+	github.com/Nigel2392/go-django/queries v0.0.0-20260704210147-69e52ff2cc32
 	github.com/Nigel2392/goldcrest v1.0.4
 	github.com/Nigel2392/mux v1.6.1-0.20251030144343-070717da1ff8
 	github.com/a-h/templ v0.3.1020

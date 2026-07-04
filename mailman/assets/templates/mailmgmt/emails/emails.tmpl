@@ -11,6 +11,13 @@
         {{ include . "" "mailmgmt/partials/list_form.tmpl" "mailmgmt/partials/email_list_form.tmpl" }}
 
         <div class="mailmgmt-list-table-wrapper">
+
+
+            {{ $list := (.Get "view_list") }}
+            {{ safe $list.Render }}
+
+
+
             <table class="mailmgmt-list-table" cellspacing="0">
                 <thead class="mailmgmt-list-table--head noselect">
                     <tr>

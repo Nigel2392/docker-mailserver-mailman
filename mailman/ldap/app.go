@@ -39,8 +39,6 @@ func NewAppConfig() django.AppConfig {
 
 	LDAP.ModelObjects = []attrs.Definer{
 		// &MailAliasUser{},
-		&MailAlias{},
-		&UserMailQuota{},
 		&Domain{},
 	}
 

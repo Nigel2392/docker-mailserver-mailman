@@ -95,7 +95,7 @@ func (m *MailMgmtCache) Increment(c context.Context, key string, amount int64) (
 	}
 	return m.underlying.Increment(c, key, amount)
 }
-func (m *MailMgmtCache) Expire(c context.Context, key string, ttl cache.Duration) error {
+func (m *MailMgmtCache) Expire(c context.Context, key string, ttl time.Duration) error {
 	if !m.Enabled {
 		return nil
 	}

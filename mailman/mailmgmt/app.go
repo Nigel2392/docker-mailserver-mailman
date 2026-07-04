@@ -14,6 +14,7 @@ import (
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
 	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
+	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/except"
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/Nigel2392/goldcrest"
@@ -51,6 +52,11 @@ func NewAppConfig() django.AppConfig {
 
 	CONFIG = &MailManagementConfig{
 		AppConfig: apps.NewAppConfig("mailmgmt"),
+	}
+
+	CONFIG.ModelObjects = []attrs.Definer{
+		&MailAlias{},
+		&UserMailQuota{},
 	}
 
 	CONFIG.Init = func(settings django.Settings) (err error) {
@@ -131,7 +137,7 @@ func NewAppConfig() django.AppConfig {
 		emails.Get("/delete", views.Serve(ViewDeleteEmail), "delete")
 		emails.Post("/delete", views.Serve(ViewDeleteEmail))
 
-		htmxEmails := htmx.Get("/emails", views.Serve(ViewEmailsHtmx), "emails")
+		htmxEmails := htmx.Get("/emails", nil, "emails")
 		htmxEmails.Get("/add", views.Serve(ViewAddEmailHtmx), "add")
 		htmxEmails.Post("/add", views.Serve(ViewAddEmailHtmx))
 		htmxEmails.Get("/update", views.Serve(ViewUpdateEmailPasswordHtmx), "update")
@@ -140,7 +146,7 @@ func NewAppConfig() django.AppConfig {
 		aliases := group.Get("/aliases", views.Serve(ViewEmails), "aliases")
 		_ = aliases
 
-		htmxAliases := htmx.Get("/alias", views.Serve(ViewEmailsHtmx), "alias")
+		htmxAliases := htmx.Get("/alias", nil, "alias")
 		htmxAliases.Get("/add", views.Serve(ViewAddAliasHtmx), "add")
 		htmxAliases.Post("/add", views.Serve(ViewAddAliasHtmx))
 	}

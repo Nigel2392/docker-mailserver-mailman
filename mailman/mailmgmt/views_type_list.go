@@ -9,11 +9,13 @@ import (
 
 	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
 	django "github.com/Nigel2392/go-django/src"
+	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/filesystem/tpl"
 	"github.com/Nigel2392/go-django/src/core/pagination"
 	"github.com/Nigel2392/go-django/src/views"
+	"github.com/Nigel2392/go-django/src/views/list"
 	"github.com/a-h/templ"
 )
 
@@ -32,6 +34,33 @@ func ViewTemplComponent[T views.View](fn func(v T, w io.Writer, r *http.Request,
 		var cmp = fn(v, w, r, c)
 		return cmp.Render(r.Context(), w)
 	}
+}
+
+type SetupViewMixin struct {
+	Func func(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request)
+}
+
+func (l SetupViewMixin) ServeXXX(w http.ResponseWriter, req *http.Request) {}
+
+func (v SetupViewMixin) Setup(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
+	if v.Func != nil {
+		return v.Func(w, r)
+	}
+	return w, r
+}
+
+type DjangoListView[T attrs.Definer] struct {
+	list.View[T]
+	ReverseURL string
+}
+
+func (v *DjangoListView[T]) Setup(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
+	if v.ReverseURL != "" {
+		var u = *r.URL
+		u.Path = django.Reverse(v.ReverseURL)
+		w.Header().Set("HX-Push-Url", u.String())
+	}
+	return w, r
 }
 
 type BoundListView[T any] struct {

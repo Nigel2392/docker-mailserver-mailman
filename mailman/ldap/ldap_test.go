@@ -18,6 +18,7 @@ import (
 	"github.com/Nigel2392/goldcrest"
 
 	appldap "github.com/Nigel2392/docker-mailserver-mailman/mailman/ldap"
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	"github.com/Nigel2392/go-django/src/djester/testdb"
 
 	"github.com/go-ldap/ldap/v3"
@@ -62,8 +63,8 @@ func TestLDAPServer(t *testing.T) {
 		&users.GroupPermission{},
 		&users.UserPermission{},
 		&appldap.Domain{},
-		&appldap.MailAlias{},
-		&appldap.MailAliasUser{},
+		&mailmgmt.MailAlias{},
+		&mailmgmt.MailAliasUser{},
 	)
 
 	// Reset the definitions to ensure all models are registered
@@ -98,12 +99,12 @@ func TestLDAPServer(t *testing.T) {
 	}
 
 	// Create a test alias
-	testAlias := models.Setup(&appldap.MailAlias{
+	testAlias := models.Setup(&mailmgmt.MailAlias{
 		Source:   drivers.MustParseEmail("info@example.com"),
 		IsActive: true,
 	})
 
-	if _, err := queries.GetQuerySet(&appldap.MailAlias{}).Create(testAlias); err != nil {
+	if _, err := queries.GetQuerySet(&mailmgmt.MailAlias{}).Create(testAlias); err != nil {
 		t.Fatalf("Failed to create test alias: %v", err)
 	}
 
