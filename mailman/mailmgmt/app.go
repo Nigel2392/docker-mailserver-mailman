@@ -39,15 +39,6 @@ type MailManagementConfig struct {
 	//pool                    *shell.ExecPool
 }
 
-func Setup() *SetupCommand {
-	return SetupCtx(context.Background())
-}
-
-func SetupCtx(ctx context.Context) *SetupCommand {
-	// ctx = shell.ContextWithExecPool(ctx, CONFIG.pool)
-	return CONFIG.CommandSetup(ctx)
-}
-
 func NewAppConfig() django.AppConfig {
 
 	CONFIG = &MailManagementConfig{
@@ -164,16 +155,6 @@ func Cache() *mailmgmt_cache.MailMgmtCache {
 	return mailmgmt_cache.NewMailMgmtCache(
 		enabled, cache.Default(),
 	)
-}
-
-func (c *MailManagementConfig) CommandSetup(ctx context.Context) *SetupCommand {
-	var setup = &SetupCommand{
-		ctx:  ctx,
-		c:    c,
-		args: make([]string, 0),
-	}
-	setup.args = append(setup.args, "setup")
-	return setup
 }
 
 func (c *MailManagementConfig) InspectDockerMailServer(ctx context.Context, size bool) (client.ContainerInspectResult, error) {
