@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/ldap"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/sieve"
 	queries "github.com/Nigel2392/go-django/queries/src"
@@ -20,10 +21,10 @@ import (
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/contrib/session"
+	"github.com/Nigel2392/goldcrest"
 
 	// "github.com/Nigel2392/go-django/src/contrib/translations"
 	"github.com/Nigel2392/go-django/src/core/checks"
-	"github.com/Nigel2392/go-django/src/core/command"
 	"github.com/Nigel2392/go-django/src/core/logger"
 )
 
@@ -71,8 +72,8 @@ func main() {
 			"./templates/tmp/docker-mailserver/before.dovecot.sieve.tmpl",
 		)
 
-		MAILMAN_ADMIN_EMAIL = GetEnv("MAILMAN_ADMIN_EMAIL")
-		MAILMAN_ADMIN_PASS  = GetEnv("MAILMAN_ADMIN_PASSWORD")
+		MAILMAN_ADMIN_EMAIL = GetEnv("MAILMAN_ADMIN_EMAIL")    //, "Administrator@example.com")
+		MAILMAN_ADMIN_PASS  = GetEnv("MAILMAN_ADMIN_PASSWORD") //, "Your-real-db-password!123")
 	)
 
 	var files = make(map[string]*os.File)
@@ -93,41 +94,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	var interrupts = make(chan os.Signal, 1)
-	signal.Notify(interrupts, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-
-	go func() {
-		<-interrupts
-
-		var exitCode int
-		for _, fn := range django.ConfigGet(django.Global.Settings, APP_SHUTDOWN, []func() error{}) {
-			if err := fn(); err != nil {
-				fmt.Printf("Error while executing shutdown function: %v\n", err)
-				exitCode = 1
-			}
-		}
-
-		if err := django.Global.Quit(); err != nil {
-			fmt.Printf("failed to close django app: %v\n", err)
-			exitCode = 1
-		}
-
-		for _, file := range files {
-			err := file.Close()
-			if err != nil {
-				fmt.Printf("failed to close log file %s: %v\n", file.Name(), err)
-				exitCode = 1
-			}
-		}
-
-		if err := db.Close(); err != nil {
-			fmt.Printf("failed to close database file %q: %v\n", MAILMAN_SQLITE_DB, err)
-			exitCode = 1
-		}
-
-		os.Exit(exitCode)
-	}()
 
 	var app = django.App(
 		django.AppSettings(django.Config(map[string]interface{}{
@@ -158,17 +124,61 @@ func main() {
 			auth.NewAppConfig,
 			mailmgmt.NewAppConfig,
 			sieve.NewAppConfig,
+			ldap.NewAppConfig,
 			// translate.NewAppConfig,
 			messages.NewAppConfig,
 			NewAppConfig,
 		),
 	)
 
+	var interrupts = make(chan os.Signal, 1)
+	signal.Notify(interrupts, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		<-interrupts
+
+		var exitCode int
+		for _, fn := range django.ConfigGet(django.Global.Settings, APP_SHUTDOWN, []func() error{}) {
+			if err := fn(); err != nil {
+				fmt.Printf("Error while executing shutdown function: %v\n", err)
+				exitCode = 1
+			}
+		}
+
+		if err := django.Global.Quit(); err != nil {
+			fmt.Printf("failed to close django app: %v\n", err)
+			exitCode = 1
+		}
+
+		os.Exit(exitCode)
+	}()
+
+	goldcrest.Register(django.HOOK_SERVER_SHUTDOWN, 0, django.DjangoHook(func(a *django.Application) error {
+		var errs = make([]error, 0)
+		for _, file := range files {
+			err := file.Close()
+			if err != nil {
+				errs = append(errs, fmt.Errorf(
+					"failed to close log file %s: %w\n", file.Name(), err,
+				))
+			}
+		}
+
+		if err := db.Close(); err != nil {
+			errs = append(errs, fmt.Errorf(
+				"failed to close database file %q: %w\n", MAILMAN_SQLITE_DB, err,
+			))
+		}
+
+		return errors.Join(errs...)
+	}))
+
 	if !RUNNING_IN_DOCKER {
 		logger.Warn("Executing in DEBUG mode.")
 	}
 
 	checks.Shutup("migrator.engine.too_many_migrations", true)
+	checks.Shutup("migrator.engine.needs_makemigrations", true)
 
 	// Initialize Go-Django before doing anything with the database.
 	err = app.Initialize()
@@ -176,46 +186,44 @@ func main() {
 		panic(err)
 	}
 
-	if err := django.Global.Commands.ExecCommand([]string{"makemigrations"}); err != nil && !errors.Is(err, migrator.ErrNoChanges) {
+	if _, _, err := migrator.AutoMigrate(context.Background()); err != nil {
 		panic(err)
 	}
-
-	if err := django.Global.Commands.ExecCommand([]string{"migrate"}); err != nil && !errors.Is(err, command.ErrShouldExit) {
-		panic(err)
-	}
-
-	checks.Shutup("migrator.engine.too_many_migrations", false)
 
 	// testCommands()
 	//
 	// os.Exit(0)
 
+	userCount, err := queries.CountObjects(&auth.User{})
+	if err != nil {
+		panic(fmt.Errorf("failed to count previously existing users: %w", err))
+	}
+
 	// If admin credentials are provided in the environment, use them
 	// to create a default admin account (if none existed previously)
 	// This will only be done if no users exist in the database yet.
-	if MAILMAN_ADMIN_EMAIL != "" && MAILMAN_ADMIN_PASS != "" {
-		userCount, err := queries.CountObjects(&auth.User{})
-		if err != nil {
-			panic(fmt.Errorf("failed to count previously existing users: %w", err))
+	switch {
+	case userCount == 0 && MAILMAN_ADMIN_EMAIL != "" && MAILMAN_ADMIN_PASS != "":
+		var user = &auth.User{}
+		var e, _ = mail.ParseAddress(MAILMAN_ADMIN_EMAIL)
+		user.Email = (*drivers.Email)(e)
+		user.Username = "admin"
+		user.IsAdministrator = true
+		user.IsActive = true
+		user.Password = auth.NewPassword(MAILMAN_ADMIN_PASS)
+
+		if user, err = queries.GetQuerySet(&auth.User{}).Filter("Email", e.Address).Create(user); err != nil {
+			panic(fmt.Errorf("failed to create admin user: %w", err))
 		}
 
-		if userCount < 1 {
-			var user = &auth.User{}
-			var e, _ = mail.ParseAddress(MAILMAN_ADMIN_EMAIL)
-			user.Email = (*drivers.Email)(e)
-			user.Username = "admin"
-			user.IsAdministrator = true
-			user.IsActive = true
-			user.Password = auth.NewPassword(MAILMAN_ADMIN_PASS)
+		logger.Infof("Admin user created: %v %s %s %t %t", user.ID, user.Username, user.Email, user.IsAdministrator, user.IsActive)
 
-			if user, err = queries.GetQuerySet(&auth.User{}).Filter("Email", e.Address).Create(user); err != nil {
-				panic(fmt.Errorf("failed to create admin user: %w", err))
-			}
-
-			logger.Infof("Admin user created: %v %s %s %t %t", user.ID, user.Username, user.Email, user.IsAdministrator, user.IsActive)
-		} else {
-			logger.Warnf("%d users already exist, but \"MAILMAN_ADMIN_EMAIL\" and \"MAILMAN_ADMIN_PASS\" are still set.", userCount)
-		}
+	case userCount > 0 && MAILMAN_ADMIN_EMAIL != "" && MAILMAN_ADMIN_PASS != "":
+		logger.Warnf("%d users already exist, but \"MAILMAN_ADMIN_EMAIL\" and \"MAILMAN_ADMIN_PASS\" are still set.", userCount)
+	case userCount == 0 && MAILMAN_ADMIN_EMAIL == "" && MAILMAN_ADMIN_PASS == "":
+		logger.Warnf("%d users exist, but no admin account is configured", userCount)
+	default:
+		logger.Infof("%d users in database.", userCount)
 	}
 
 	if err := app.Serve(); err != nil {
