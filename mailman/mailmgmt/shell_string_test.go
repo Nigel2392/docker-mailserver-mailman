@@ -57,7 +57,7 @@ func TestMailCommands(t *testing.T) {
 			build: func() *mailmgmt.Command {
 				return base.Email().CommandList(nil)
 			},
-			wantArgs: "email list",
+			wantArgs: "email list | awk -v start=1 -v end=10 '/^\\*/{c++} c>=start && c<=end {print} c>end {exit}'",
 		},
 		{
 			name: "Restrict Add Send",
@@ -107,7 +107,6 @@ func TestMailCommands(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := tt.build()
 
-			// 1. Error Validation
 			if tt.wantErr != "" {
 				if cmd.Error() == nil {
 					t.Fatalf("expected error %q, got nil", tt.wantErr)
@@ -121,7 +120,6 @@ func TestMailCommands(t *testing.T) {
 				t.Fatalf("unexpected error: %v", cmd.Error())
 			}
 
-			// 2. Arguments Validation
 			gotArgs := cmd.String()
 			if gotArgs != tt.wantArgs {
 				t.Errorf("got args %q, want %q", gotArgs, tt.wantArgs)

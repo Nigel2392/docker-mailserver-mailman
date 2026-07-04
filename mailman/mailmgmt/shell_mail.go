@@ -157,7 +157,7 @@ func (m MailCommand) CountTotal(query string) (int, error) {
 }
 
 func (m MailCommand) Add(email string, passwd string) error {
-	if !_matchEmail.MatchString(email) {
+	if !IsValidEmail(email) {
 		return fmt.Errorf("invalid email syntax: %q: %w", email, errs.ErrInvalidSyntax)
 	}
 	_, _, err := m.CommandAdd(email, passwd).Exec()
@@ -174,6 +174,15 @@ func (m MailCommand) Delete(emails ...string) error {
 	_, _, err := m.CommandDelete(emails...).Exec()
 	return err
 
+}
+
+type ListedAddress struct {
+	Raw            string
+	Email          string
+	MaxQuota       string
+	CurrentQuota   string
+	PercentageFull int
+	Aliases        []string
 }
 
 // Get returns a single ListedAddress for a specific email.
@@ -233,7 +242,7 @@ func parseEmailListOutput(src string) ([]ListedAddress, error) {
 				continue
 			}
 
-			// 3. Trim any remaining whitespace and filter out empty fields
+			// Trim any remaining whitespace and filter out empty fields
 			var aliases = make([]string, 0, len(addrs))
 			for _, addr := range addrs {
 				if addr.Address != "" {

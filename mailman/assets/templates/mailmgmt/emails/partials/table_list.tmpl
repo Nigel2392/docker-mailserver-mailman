@@ -12,7 +12,7 @@
         <td class="mailmgmt--table--data">
             <span class="email" title="{{ $email.Email }}">{{ $email.Email }}</span>
         </td>
-        <td class="mailmgmt--table--data">
+        <td class="mailmgmt--table--data noselect">
             <span class="mailmgmt--quota">
                 {{ $email.CurrentQuota }} / {{ $email.MaxQuota }}
                 {{ if ne $email.MaxQuota "~" }}
@@ -20,10 +20,10 @@
                 {{ end }}
             </span>
         </td>
-        <td class="mailmgmt--table--data">
+        <td class="mailmgmt--table--data noselect">
             {{ $email.Aliases|len }}
         </td>
-        <td class="mailmgmt--table--action">
+        <td class="mailmgmt--table--action noselect">
             <div class="mailmgmt-list-item-actions">
                 <button class="mailmgmt-action-button mailmgmt-action-alias"
                     hx-get="{{ url "mailmgmt:htmx:alias:add" }}?email={{ urlquery $email.Email }}"

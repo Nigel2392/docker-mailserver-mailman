@@ -11,18 +11,18 @@ package cache
  	# Example 1: Standard Key Generation and Retrieval
 
 	func GetUser(ctx context.Context, userID string) (User, error) {
-	    // 1. Generate the versioned key (e.g., "users.0.123")
+	    // Generate the versioned key (e.g., "users.0.123")
 	    key, err := cache.GenerationKey(ctx, "users", userID)
 	    if err != nil {
 	        return User{}, err
 	    }
 
-	    // 2. Attempt to fetch from cache
+	    // Attempt to fetch from cache
 	    if val, err := cache.Get(ctx, key); err == nil {
 	        return val.(User), nil
 	    }
 
-	    // 3. Cache miss: fetch from database and store
+	    // Cache miss: fetch from database and store
 	    user := fetchUserFromDB(userID)
 	    _ = cache.Set(ctx, key, user, time.Minute*15)
 
@@ -42,13 +42,13 @@ package cache
  	# Example 3: Bulk Updating with the NextGeneration Closure
 
 	func SeedNewProducts(ctx context.Context, products []Product) error {
-	    // 1. Bump the generation to invalidate the old product catalog
+	    // Bump the generation to invalidate the old product catalog
 	    genKeyFunc, err := cache.NextGeneration(ctx, "products", 0)
 	    if err != nil {
 	        return err
 	    }
 
-	    // 2. Use the returned closure to rapidly generate keys for the new generation
+	    // Use the returned closure to rapidly generate keys for the new generation
 	    for _, p := range products {
 	        // genKeyFunc generates "products.X.pid" without needing to hit the cache again
 	        _ = cache.Set(ctx, genKeyFunc(p.ID), p, time.Hour)

@@ -1,6 +1,6 @@
 {{ define "list_form" }}
     {{ $ctx := . }}
-    <form id="list-form" class="mailmgmt-list-toolbar" method="GET" {{ block "attributes" . }}{{ end }}>
+    <form id="list-form" class="mailmgmt-list-toolbar noselect" method="GET" {{ block "attributes" . }}{{ end }}>
         <input type="hidden" name="page" value="{{ .Get "view.page" }}"/>
 
         <div class="mailmgmt-list-actions pre">

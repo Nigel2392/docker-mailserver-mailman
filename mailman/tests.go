@@ -67,11 +67,11 @@ func testOutputs() {
 		}
 	}
 
-	aliases := must(mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().Map(nil))
-	for target, list := range aliases {
+	aliases := must(mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().List(nil))
+	for target, list := range aliases.Iterator() {
 		fmt.Fprintf(outFile, "%s:\n", target)
-		for _, list := range list {
-			fmt.Fprintf(outFile, "- %s\n", list)
+		for _, l := range list {
+			fmt.Fprintf(outFile, "- %s\n", l)
 		}
 	}
 
@@ -100,16 +100,16 @@ func testCommands() {
 	//}
 
 	for i := range 14 {
-		cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandAdd(fmt.Sprintf("test%d@go-dev.nl", i), "test")
+		cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandAdd(fmt.Sprintf("test%d@example.com", i), "test")
 		writeCommandOutputFile(cmd)
 
 		for j := range 3 {
-			cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().CommandAdd(fmt.Sprintf("new-test%d-%d@go-dev.nl", i, j), fmt.Sprintf("new-test%d@go-dev.nl", i))
+			cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Alias().CommandAdd(fmt.Sprintf("new-test%d-%d@example.com", i, j), fmt.Sprintf("new-test%d@example.com", i))
 			writeCommandOutputFile(cmd)
 		}
 	}
 
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandUpdate("test1@go-dev.nl", "test1")
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandUpdate("test1@example.com", "test1")
 	writeCommandOutputFile(cmd)
 
 	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Email().CommandList(nil)
@@ -126,28 +126,28 @@ func testCommands() {
 	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().List().CommandReceive()
 	writeCommandOutputFile(cmd)
 
-	// Add send restriction for test1@go-dev.nl
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandSend("test1@go-dev.nl")
+	// Add send restriction for test1@example.com
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandSend("test1@example.com")
 	writeCommandOutputFile(cmd)
 
-	// Add send restriction for test2@go-dev.nl
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandSend("test2@go-dev.nl")
+	// Add send restriction for test2@example.com
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandSend("test2@example.com")
 	writeCommandOutputFile(cmd)
 
-	// Add send restriction for test3@go-dev.nl
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandSend("test3@go-dev.nl")
+	// Add send restriction for test3@example.com
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandSend("test3@example.com")
 	writeCommandOutputFile(cmd)
 
-	// Add receive restriction for test1@go-dev.nl
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandReceive("test1@go-dev.nl")
+	// Add receive restriction for test1@example.com
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandReceive("test1@example.com")
 	writeCommandOutputFile(cmd)
 
-	// Add receive restriction for test2@go-dev.nl
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandReceive("test2@go-dev.nl")
+	// Add receive restriction for test2@example.com
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandReceive("test2@example.com")
 	writeCommandOutputFile(cmd)
 
-	// Add receive restriction for test3@go-dev.nl
-	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandReceive("test3@go-dev.nl")
+	// Add receive restriction for test3@example.com
+	cmd = mailmgmt.CONFIG.CommandSetup(context.Background()).Restrict().Add().CommandReceive("test3@example.com")
 	writeCommandOutputFile(cmd)
 
 	// Verify send restrictions were added by listing again

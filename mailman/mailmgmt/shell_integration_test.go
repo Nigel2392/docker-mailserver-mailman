@@ -1,4 +1,4 @@
-//go:build (!mysql && !postgres && !mariadb) || (!mysql && !postgres && !mysql_local && !mariadb && !sqlite)
+//go:build integration
 
 package mailmgmt_test
 
@@ -26,7 +26,7 @@ const (
 
 // TestMain handles the setup and teardown for the entire test suite.
 func TestMain(m *testing.M) {
-	// 1. Create required directories for the app
+	// Create required directories for the app
 	dirs := []string{"./migrations", "./log"}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -35,17 +35,17 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	// 2. Teardown: Clean up generated directories after tests
+	// Teardown: Clean up generated directories after tests
 	defer func() {
 		for _, dir := range dirs {
 			os.RemoveAll(dir)
 		}
 	}()
 
-	// 3. Initialize test database
+	// Initialize test database
 	_, db := testdb.Open()
 
-	// 4. Bootstrap the Django App with required settings
+	// Bootstrap the Django App with required settings
 	app := django.App(
 		django.Configure(map[string]interface{}{
 			django.APPVAR_DATABASE:             db,
@@ -61,7 +61,7 @@ func TestMain(m *testing.M) {
 		),
 	)
 
-	// 5. Setup basic stdout logger
+	// Setup basic stdout logger
 	logger.Setup(&logger.Logger{
 		Level:       logger.DBG,
 		OutputDebug: os.Stdout,
@@ -128,7 +128,7 @@ func TestEmailLifecycle(t *testing.T) {
 	_ = base.Email().Delete(testMail)
 	assertNotInContainerFile(t, fileAccounts, testMail)
 
-	// 1. Add Email
+	// Add Email
 	err := base.Email().Add(testMail, testPass)
 	if err != nil {
 		t.Fatalf("Failed to add email: %v", err)
@@ -136,7 +136,7 @@ func TestEmailLifecycle(t *testing.T) {
 	// Verify actual file insertion
 	assertInContainerFile(t, fileAccounts, testMail)
 
-	// 2. List Email
+	// List Email
 	list, err := base.Email().List(nil)
 	if err != nil {
 		t.Fatalf("Failed to list emails: %v", err)
@@ -152,13 +152,13 @@ func TestEmailLifecycle(t *testing.T) {
 		t.Errorf("Email List() parsed successfully, but %s was missing from the structs: %+v", testMail, list)
 	}
 
-	// 3. Update Email
+	// Update Email
 	err = base.Email().Update(testMail, updatePass)
 	if err != nil {
 		t.Fatalf("Failed to update email: %v", err)
 	}
 
-	// 4. Delete Email
+	// Delete Email
 	err = base.Email().Delete(testMail)
 	if err != nil {
 		t.Fatalf("Failed to delete email: %v", err)
@@ -176,7 +176,7 @@ func TestAliasLifecycle(t *testing.T) {
 	_ = base.Alias().Delete(testAlias, testTarget)
 	assertNotInContainerFile(t, fileVirtual, testAlias)
 
-	// 1. Add Alias
+	// Add Alias
 	err := base.Alias().Add(testAlias, testTarget)
 	if err != nil {
 		t.Fatalf("Failed to add alias: %v", err)
@@ -186,13 +186,13 @@ func TestAliasLifecycle(t *testing.T) {
 	expectedLine := fmt.Sprintf("%s %s", testAlias, testTarget)
 	assertInContainerFile(t, fileVirtual, expectedLine)
 
-	// 2. Map Alias
-	m, err := base.Alias().Map(nil)
+	// Map Alias
+	m, err := base.Alias().List(nil)
 	if err != nil {
 		t.Fatalf("Failed to map aliases: %v", err)
 	}
 	found := false
-	if aliases, ok := m[testTarget]; ok {
+	if aliases, ok := m.Get(testTarget); ok {
 		for _, a := range aliases {
 			if a == testAlias {
 				found = true
@@ -204,7 +204,7 @@ func TestAliasLifecycle(t *testing.T) {
 		t.Errorf("Alias Map() parsed successfully, but %s -> %s was missing", testAlias, testTarget)
 	}
 
-	// 3. Delete Alias
+	// Delete Alias
 	err = base.Alias().Delete(testAlias, testTarget)
 	if err != nil {
 		t.Fatalf("Failed to delete alias: %v", err)
@@ -220,7 +220,7 @@ func TestRestrictLifecycle(t *testing.T) {
 	_ = base.Restrict().Remove().Send(testMail)
 	_ = base.Restrict().Remove().Receive(testMail)
 
-	// 1. Restrict Send
+	// Restrict Send
 	err := base.Restrict().Add().Send(testMail)
 	if err != nil {
 		t.Fatalf("Failed to restrict send: %v", err)
@@ -244,14 +244,14 @@ func TestRestrictLifecycle(t *testing.T) {
 		t.Errorf("Send restriction for %s was missing from List() structs", testMail)
 	}
 
-	// 2. Restrict Receive
+	// Restrict Receive
 	err = base.Restrict().Add().Receive(testMail)
 	if err != nil {
 		t.Fatalf("Failed to restrict receive: %v", err)
 	}
 	assertInContainerFile(t, fileReceive, fmt.Sprintf("%s REJECT", testMail))
 
-	// 3. Remove Restrictions
+	// Remove Restrictions
 	err = base.Restrict().Remove().Send(testMail)
 	if err != nil {
 		t.Fatalf("Failed to remove send restriction: %v", err)

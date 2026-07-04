@@ -34,6 +34,7 @@ type MailManagementConfig struct {
 	*apps.AppConfig
 	Docker                  *client.Client
 	MailServerContainerName string
+	res                     *client.ContainerInspectResult
 	//pool                    *shell.ExecPool
 }
 
@@ -170,9 +171,14 @@ func (c *MailManagementConfig) CommandSetup(ctx context.Context) *SetupCommand {
 }
 
 func (c *MailManagementConfig) InspectDockerMailServer(ctx context.Context, size bool) (client.ContainerInspectResult, error) {
-	return c.Docker.ContainerInspect(
+	if c.res != nil {
+		return *c.res, nil
+	}
+	var res, err = c.Docker.ContainerInspect(
 		ctx, c.MailServerContainerName, client.ContainerInspectOptions{Size: size},
 	)
+	c.res = &res
+	return res, err
 }
 
 var _matchEmail = regexp.MustCompile(EMAIL_REGEX)

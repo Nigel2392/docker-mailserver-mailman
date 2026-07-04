@@ -1,21 +1,73 @@
 package mailmgmt
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/mail"
+	"strconv"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
 	django "github.com/Nigel2392/go-django/src"
+	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/forms/fields"
 )
 
-func (c *MailManagementConfig) ViewAliases(w http.ResponseWriter, r *http.Request) {
+var ViewAliases = &ListView[ListedAddress]{
+	RedirectOnMissingQuery: true,
+	BaseKey:                "main",
+	Template:               "mailmgmt/emails/alias.tmpl",
+	GetContext: func(blv *BoundListView[ListedAddress], hc *ctx.HTTPRequestContext) (ctx.Context, error) {
+		// messages.Debug(hc.Request(), "Debug message!")
+		// messages.Info(hc.Request(), "Info message!")
+		// messages.Success(hc.Request(), "Success message!")
+		// messages.Warning(hc.Request(), "Warning message!")
+		// messages.Error(hc.Request(), "Error message!")
+		return hc, nil
+	},
 }
 
-func (c *MailManagementConfig) ViewAliasesHtmx(w http.ResponseWriter, r *http.Request) {
+var ViewAliasesHtmx = &ListView[AliasListResult]{
+	ReverseURL: "mailmgmt:aliases",
+	Template:   "mailmgmt/aliases/partials/table_list.tmpl",
+	GetCount: func(b *BoundListView[AliasListResult], r *http.Request) (int, error) {
+		return cache.GetItem(
+			r.Context(),
+			CACHE_TIME,
+			-1, "emails", []string{"aliases", "count", hashStr(b.Query)},
+			func(ctx context.Context) (int, error) {
+				return SetupCtx(r.Context()).Alias().CountTotal(b.Query)
+			},
+		)
+	},
+	GetObjects: func(b *BoundListView[AliasListResult], r *http.Request, amount, offset int) ([]AliasListResult, error) {
+		return cache.GetItem(
+			r.Context(),
+			CACHE_TIME,
+			-1, "emails", []string{"aliases", "list", strconv.Itoa(b.Page), strconv.Itoa(b.Limit), hashStr(b.Query)},
+			func(ctx context.Context) ([]AliasListResult, error) {
+				var l, err = SetupCtx(r.Context()).Alias().List(&AliasListConfig{
+					Page:        b.Page,
+					Limit:       b.Limit,
+					SearchQuery: b.Query,
+				})
+				if err != nil {
+					return nil, err
+				}
+				var res = make([]AliasListResult, 0, l.Len())
+				for k, v := range l.Iterator() {
+					res = append(res, AliasListResult{
+						Alias:   k,
+						Targets: v,
+					})
+				}
+				return res, nil
+			},
+		)
+	},
 }
 
 var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
@@ -25,7 +77,7 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 	AllowedMethods: []string{"GET", "POST"},
 	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
 		return fmt.Sprintf("%s?email=%s",
-			django.Reverse("mailmgmt:htmx:alias:add"),
+			django.Reverse("mailmgmt:htmx:aliases:add"),
 			r.URL.Query().Get("email"),
 		)
 	},

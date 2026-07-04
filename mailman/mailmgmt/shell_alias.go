@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"al.essio.dev/pkg/shellescape"
+	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
 	"github.com/Nigel2392/go-django/src/core/errs"
+	"github.com/elliotchance/orderedmap/v2"
 )
 
 type AliasCommand struct {
@@ -26,10 +29,47 @@ func (m AliasCommand) CommandDelete(alias, target string) *Command {
 	}
 }
 
+func (m AliasCommand) CommandCountTotal(query string) *Command {
+	if query == "" {
+		return &Command{
+			s: m.s.Arg(`list | grep -c '^\*'`),
+		}
+	}
+
+	safeSearch := shellescape.Quote(query)
+	cmdString := fmt.Sprintf(`list | grep '^\*' | grep -ic %s`, safeSearch)
+	return &Command{
+		s: m.s.Arg(cmdString),
+	}
+}
+
+// CommandGet retrieves exact alias matches (alias is in column 2)
+func (m AliasCommand) CommandGet(alias string) *Command {
+	safeAlias := shellescape.Quote(alias)
+	awkScript := fmt.Sprintf(`awk -v a=%s '/^\*/ { if (tolower($2) == tolower(a)) print $0 }'`, safeAlias)
+
+	return &Command{
+		s: m.s.Arg(fmt.Sprintf("list | %s", awkScript)),
+	}
+}
+
+// CommandGetByTarget retrieves any lines where the target string appears in column 3.
+func (m AliasCommand) CommandGetByTarget(target string) *Command {
+	safeTarget := shellescape.Quote(target)
+	// We use ~ to do a broad match in awk to catch it inside comma-separated lists,
+	// and accurately filter the exact target inside the Go parser.
+	awkScript := fmt.Sprintf(`awk -v t=%s '/^\*/ { if (tolower($3) ~ tolower(t)) print $0 }'`, safeTarget)
+
+	return &Command{
+		s: m.s.Arg(fmt.Sprintf("list | %s", awkScript)),
+	}
+}
+
 type AliasListConfig struct {
-	Page        int
-	Limit       int
-	SearchQuery string
+	Page            int
+	Limit           int
+	SearchQuery     string
+	TargetToAliases bool
 }
 
 func (m AliasCommand) CommandList(config *AliasListConfig) *Command {
@@ -54,7 +94,6 @@ func (m AliasCommand) CommandList(config *AliasListConfig) *Command {
 
 	var awkScript string
 	if cfg.SearchQuery != "" {
-		// Notice -v q=%s without manual single quotes, as shellescape handles them.
 		awkScript = fmt.Sprintf(
 			`awk -v start=%d -v end=%d -v q=%s '/^\*/ && tolower($0) ~ tolower(q) {c++; if(c>=start && c<=end) print; if(c>end) exit}'`,
 			startRecord, endRecord, safeSearch,
@@ -71,22 +110,8 @@ func (m AliasCommand) CommandList(config *AliasListConfig) *Command {
 	}
 }
 
-// CommandGet retrieves all targets for a specific, exact alias match
-func (m AliasCommand) CommandGet(alias string) *Command {
-	safeAlias := shellescape.Quote(alias)
-
-	// By comparing $2 directly, we ensure exact matches on the alias column only,
-	// rather than partial substring matches that could hit the target column.
-	// We print $0 (the whole line) so the existing regex parser handles it natively.
-	awkScript := fmt.Sprintf(`awk -v a=%s '/^\*/ { if (tolower($2) == tolower(a)) print $0 }'`, safeAlias)
-
-	return &Command{
-		s: m.s.Arg(fmt.Sprintf("list | %s", awkScript)),
-	}
-}
-
 func (m AliasCommand) Add(alias, target string) error {
-	if !_matchEmail.MatchString(alias) || !_matchEmail.MatchString(target) {
+	if !IsValidEmail(alias) || !IsValidEmail(target) {
 		return fmt.Errorf("alias and target must be valid email addresses: %w", errs.ErrInvalidSyntax)
 	}
 
@@ -99,52 +124,59 @@ func (m AliasCommand) Delete(alias, target string) error {
 	return err
 }
 
-var _matchAliasListRegex = regexp.MustCompile(fmt.Sprintf(
-	`\* %s %s$`, EMAIL_REGEX, EMAIL_REGEX,
-))
-
-// Map returns a map of target -> []aliases
-func (m AliasCommand) Map(cnf *AliasListConfig) (map[string][]string, error) {
-	src, _, err := m.CommandList(cnf).Exec()
+// CountTotal executes the count command and returns the integer result.
+func (m AliasCommand) CountTotal(query string) (int, error) {
+	src, _, err := m.CommandCountTotal(query).Exec()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	var scanner = bufio.NewScanner(strings.NewReader(src))
-	var result = make(map[string][]string) // map[target]aliases
+	// Clean the output
+	countStr := strings.TrimSpace(src)
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		var matches = _matchAliasListRegex.FindStringSubmatch(line)
-		if len(matches) < 3 {
-			continue // not an alias line
-		}
-
-		var (
-			alias  = matches[1]
-			target = matches[2]
-		)
-
-		// Go's append automatically handles empty map keys elegantly
-		result[target] = append(result[target], alias)
+	// Convert to integer
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse alias count output %q: %v", countStr, err)
 	}
 
-	return result, nil
+	return count, nil
 }
 
-// List returns a list of [alias, target]
-func (m AliasCommand) List(cnf *AliasListConfig) ([][2]string, error) {
-	src, _, err := m.CommandList(cnf).Exec()
-	if err != nil {
-		return nil, err
-	}
+type AliasListResult struct {
+	Alias   string
+	Targets []string
+}
 
+// The regex captures the Alias in matches[1] (from EMAIL_REGEX) and the comma-separated targets in matches[2]
+var _matchAliasListRegex = regexp.MustCompile(fmt.Sprintf(`^\* %s (\S+)$`, EMAIL_REGEX))
+
+func fwdListOutputMap(resultmap *orderedmap.OrderedMap[string, []string], alias string, targets []string) {
+	// Merge targets if the same alias appears multiple times
+	if existing, ok := resultmap.Get(alias); ok {
+		resultmap.Set(alias, append(existing, targets...))
+	} else {
+		resultmap.Set(alias, targets)
+	}
+}
+
+func revListOutputMap(resultmap *orderedmap.OrderedMap[string, []string], alias string, targets []string) {
+	for _, target := range targets {
+		if existing, ok := resultmap.Get(target); ok {
+			resultmap.Set(target, append(existing, alias))
+		} else {
+			aliases := make([]string, 0, 4)
+			aliases = append(aliases, alias)
+			resultmap.Set(target, aliases)
+		}
+	}
+}
+
+// parseAliasListOutput is the universal parser that handles comma separation and multi-line deduplication
+// it returns an ordered map of (fwd) alias to targets[] or (!fwd) target to []alias
+func parseAliasListOutput(src string, fwd bool) (*orderedmap.OrderedMap[string, []string], error) {
 	var scanner = bufio.NewScanner(strings.NewReader(src))
-	var result = make([][2]string, 0)
+	var resultMap = orderedmap.NewOrderedMap[string, []string]() // Use orderedmap to preserve rendering order
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -154,41 +186,61 @@ func (m AliasCommand) List(cnf *AliasListConfig) ([][2]string, error) {
 
 		var matches = _matchAliasListRegex.FindStringSubmatch(line)
 		if len(matches) < 3 {
-			continue // not an alias line
+			continue
 		}
 
-		result = append(
-			result, [2]string{matches[1], matches[2]},
-		)
+		alias := matches[1]
+		targetsBlob := matches[2]
+
+		targets := strings.FieldsFunc(targetsBlob, func(r rune) bool {
+			return r == ',' || r == ' '
+		})
+
+		if fwd {
+			fwdListOutputMap(resultMap, alias, targets)
+		} else {
+			revListOutputMap(resultMap, alias, targets)
+		}
+
 	}
 
-	return result, nil
+	return resultMap, nil
+}
+
+// List returns a list of [alias, []target]
+func (m AliasCommand) List(cnf *AliasListConfig) (*orderedmap.OrderedMap[string, []string], error) {
+	src, _, err := m.CommandList(cnf).Exec()
+	if err != nil {
+		return nil, err
+	}
+
+	targetToAliases := cnf != nil && cnf.TargetToAliases
+	return parseAliasListOutput(src, !targetToAliases) // false means target -> []alias
 }
 
 // Get returns all targets belonging to a specific alias string
-func (m AliasCommand) Get(alias string) ([]string, error) {
-	src, _, err := m.CommandGet(alias).Exec()
+func (m AliasCommand) Get(address string, byTarget bool) ([]string, error) {
+	var cmd func(string) *Command
+	if !byTarget {
+		cmd = m.CommandGet
+	} else {
+		cmd = m.CommandGetByTarget
+	}
+
+	src, _, err := cmd(address).Exec()
 	if err != nil {
 		return nil, err
 	}
 
-	var scanner = bufio.NewScanner(strings.NewReader(src))
-	var targets = make([]string, 0)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		var matches = _matchAliasListRegex.FindStringSubmatch(line)
-		if len(matches) < 3 {
-			continue
-		}
-
-		// matches[2] will always contain the target
-		targets = append(targets, matches[2])
+	parsed, err := parseAliasListOutput(src, !byTarget)
+	if err != nil {
+		return nil, err
 	}
 
-	return targets, nil
+	v, ok := parsed.Get(address)
+	if !ok {
+		return []string{}, errors.NotExists.Wrapf("alias %q not found", address)
+	}
+
+	return v, nil
 }
