@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	merrs "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/errors"
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/shell"
 	"github.com/Nigel2392/go-django/src/core/logger"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/client"
@@ -63,30 +62,6 @@ func (s *SetupCommand) Arg(args ...string) SetupCommand {
 	}
 }
 
-func (s SetupCommand) Email() MailCommand {
-	return MailCommand{
-		s: s.Arg("email"),
-	}
-}
-
-func (s SetupCommand) Alias() AliasCommand {
-	return AliasCommand{
-		s: s.Arg("alias"),
-	}
-}
-
-func (s SetupCommand) Quota() QuotaCommand {
-	return QuotaCommand{
-		s: s.Arg("quota"),
-	}
-}
-
-func (s SetupCommand) Restrict() RestrictMailCommand {
-	return RestrictMailCommand{
-		s: s.Arg("email", "restrict"),
-	}
-}
-
 type ColorStrippingWriter struct {
 	strings.Builder
 }
@@ -95,58 +70,6 @@ func (w *ColorStrippingWriter) Write(p []byte) (n int, err error) {
 	n = len(p)
 	_, err = w.Builder.Write(stripAnsi(p))
 	return n, err
-}
-
-func (c Command) Exec2() (out, errOut string, err error) {
-	if c.err != nil {
-		return "", "", c.err
-	}
-
-	logger.Infof("Executing command in pool: %q", c.String())
-
-	resultChan, err := shell.ExecInPool(c.s.ctx, c.String())
-	if err != nil {
-		return "", "", err
-	}
-
-	var result shell.Result
-	select {
-	case result = <-resultChan:
-		// Result received successfully
-	case <-c.s.ctx.Done():
-		// The HTTP request timed out or the client disconnected
-		return "", "", fmt.Errorf("request cancelled while waiting for pool: %w", c.s.ctx.Err())
-	}
-
-	cleanOutput := string(stripAnsi([]byte(result.Output)))
-
-	if result.ExitCode != 0 {
-		var errs = make([]error, 0)
-		var errsList = strings.Split(cleanOutput, "\n")
-
-		for _, e := range errsList {
-			var errIdx = strings.Index(e, "ERROR")
-			if errIdx < 0 {
-				continue
-			}
-			errs = append(errs, errors.New(e[errIdx:]))
-		}
-
-		if len(errs) > 1 {
-			// We return cleanOutput for both out and errOut since they are merged
-			return cleanOutput, cleanOutput, errors.Join(append([]error{ErrCommandFailed}, errs...)...)
-		}
-
-		return cleanOutput, cleanOutput, errors.Join(ErrCommandFailed, fmt.Errorf("(exit code %d)", result.ExitCode), result.Error)
-	}
-
-	// If there was a stream death or write error reported by the pool
-	if result.Error != nil {
-		return cleanOutput, cleanOutput, result.Error
-	}
-
-	// Success
-	return cleanOutput, "", nil
 }
 
 func (c Command) Exec() (out, errOut string, err error) {

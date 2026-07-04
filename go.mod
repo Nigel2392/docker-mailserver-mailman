@@ -3,13 +3,12 @@ module github.com/Nigel2392/docker-mailserver-mailman
 go 1.26.3
 
 require (
-	al.essio.dev/pkg/shellescape v1.6.0
-	github.com/Nigel2392/go-django v1.7.1-0.20260704005439-5b5518eafc73
-	github.com/Nigel2392/go-django/queries v0.0.0-20260704005439-5b5518eafc73
+	github.com/Nigel2392/cache v1.0.1
+	github.com/Nigel2392/go-django v1.7.1-0.20260704155041-cc4559d3fe40
+	github.com/Nigel2392/go-django/queries v0.0.0-20260704155041-cc4559d3fe40
 	github.com/Nigel2392/goldcrest v1.0.4
 	github.com/Nigel2392/mux v1.6.1-0.20251030144343-070717da1ff8
 	github.com/a-h/templ v0.3.1020
-	github.com/elliotchance/orderedmap/v2 v2.7.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-ldap/ldap/v3 v3.4.13
 	github.com/google/uuid v1.6.0
@@ -40,6 +39,7 @@ require (
 	github.com/dolthub/go-mysql-server v0.20.0 // indirect
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71 // indirect
 	github.com/dolthub/vitess v0.0.0-20250512224608-8fb9c6ea092c // indirect
+	github.com/elliotchance/orderedmap/v2 v2.7.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gertd/go-pluralize v0.2.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect

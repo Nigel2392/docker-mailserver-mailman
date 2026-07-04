@@ -1,8 +1,8 @@
-# Docker Mailserver Mailman
-
 <p align="center">
     <img src="image/README/1783175501783.png" alt="Docker Mailserver Mailman (Image)">
 </p align="center">
+
+# Docker Mailserver Mailman
 
 Interface to manage docker mailserver email accounts.
 
@@ -16,7 +16,7 @@ This package is intended to do the following, some of it yet to be implemented:
 * Allow to connect different distributed databases to the LDAP backend
 * Managing Dovecot sieve scripts
 
-I'll be really honest here -- **you probably shouldn't expose this LDAP interface to the public net.**
+I'll be really honest here -- **you probably shouldn't expose the LDAP ports to the public net.**
 
 LDAP is a new protocol for me; or, well it's internals are.
 

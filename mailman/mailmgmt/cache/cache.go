@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Nigel2392/go-django/src/core/cache"
+	"github.com/Nigel2392/cache"
 )
 
 var _ cache.TransactionalCache = (*MailMgmtCache)(nil)
