@@ -35,6 +35,33 @@ func (m *MailAlias) UniqueTogether() [][]string {
 	}
 }
 
+type UserMailQuota struct {
+	models.Model `table:"mail_quota" json:"-"`
+
+	ID    uint64
+	User  *auth.User
+	Bytes uint
+}
+
+func (m *UserMailQuota) FieldDefs() attrs.Definitions {
+	return attrs.Define(m,
+		attrs.Unbound("ID", &attrs.FieldConfig{
+			ReadOnly: true,
+			Primary:  true,
+			Label:    trans.S("ID"),
+		}),
+		attrs.Unbound("User", &attrs.FieldConfig{
+			ReadOnly:    true,
+			RelOneToOne: attrs.Relate(&auth.User{}, "", nil),
+			Label:       trans.S("User"),
+		}),
+		attrs.Unbound("Bytes", &attrs.FieldConfig{
+			ReadOnly: true,
+			Label:    trans.S("Quota in Bytes"),
+		}),
+	).WithTableName("user_mail_quota")
+}
+
 // MailAlias represents an email forwarding rule in the database
 type MailAlias struct {
 	models.Model `table:"mail_aliases" json:"-"`
