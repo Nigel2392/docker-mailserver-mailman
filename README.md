@@ -1,8 +1,8 @@
 # Docker Mailserver Mailman
 
-<center>
+<p align="center">
     <img src="image/README/1783175501783.png" alt="Docker Mailserver Mailman (Image)">
-</center>
+</p align="center">
 
 Interface to manage docker mailserver email accounts.
 
