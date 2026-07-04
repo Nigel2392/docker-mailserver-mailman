@@ -25,7 +25,7 @@ if envelope :is "to" "{{ $fwd.Source }}" {
 # --- Vacation Rules ---
 {{ range $vac := .Vacations }}
 {{ if $vac.Enabled }}
-if envelope :is "to" "{{ $vac.ForEmail }}" {
+if envelope :is "to" "{{ $vac.For.Email.Address }}" {
     vacation :days {{ $vac.Days }} :subject "{{ $vac.Subject }}" text:
 {{ $vac.Message }}
 .

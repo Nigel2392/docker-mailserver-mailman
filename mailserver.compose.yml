@@ -2,7 +2,6 @@ services:
   mailman_mailserver:
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: mailserver
-    # Provide the FQDN of your mail server here (Your DNS MX record should point to this value)
     hostname: mail.example.com
     ports:
       - "25:25"
@@ -15,6 +14,29 @@ services:
       - ENABLE_RSPAMD=1
       - ENABLE_CLAMAV=1
       - ENABLE_FAIL2BAN=1
+      
+      # ---------------------------------------------
+      # LDAP INTEGRATION (Connecting to Go Backend)
+      # ---------------------------------------------
+      - ACCOUNT_PROVISIONER=LDAP
+      
+      # The IP of your Go application. 
+      - LDAP_SERVER_HOST=127.0.0.1
+      
+      # The Base tree DMS will search. Our Go app ignores this, so it can be anything.
+      # This will be changed later.
+      - LDAP_SEARCH_BASE=dc=example,dc=com
+      
+      # The Service Account credentials we programmed into the Go 'BIND' handler
+      - LDAP_BIND_DN=cn=Administrator,dc=example,dc=com
+      - LDAP_BIND_PW=Your-real-db-password!123
+      
+      # The exact queries that trigger our Go 'SEARCH' handler regex/string extractors
+      - LDAP_QUERY_FILTER_USER=(&(objectClass=user)(mail=%s))
+      - LDAP_QUERY_FILTER_ALIAS=(&(objectClass=user)(otherMailbox=%s))
+      # Group and Domain filters are required by DMS, even if you don't use them yet
+      - LDAP_QUERY_FILTER_GROUP=(&(objectclass=group)(mail=%s))
+      - LDAP_QUERY_FILTER_DOMAIN=(&(|(mail=*@%s)(mailalias=*@%s)(mailGroupMember=*@%s))(mailEnabled=TRUE))
 
 volumes:
   mailman_mailserver_data:
