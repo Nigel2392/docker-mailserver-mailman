@@ -10,7 +10,9 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/ldap"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/sieve"
@@ -22,6 +24,7 @@ import (
 	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/contrib/session"
 	"github.com/Nigel2392/goldcrest"
+	"github.com/moby/moby/client"
 
 	// "github.com/Nigel2392/go-django/src/contrib/translations"
 	"github.com/Nigel2392/go-django/src/core/checks"
@@ -109,6 +112,12 @@ func main() {
 			mailmgmt.MAILSERVER_CONTAINER_NAME:  MAILSERVER_CONTAINER_NAME,
 			mailmgmt.MAILSERVER_CACHING_ENABLED: MAILSERVER_CACHING_ENABLED,
 			sieve.MAILMAN_SIEVE_TEMPLATE:        MAILMAN_SIEVE_TEMPLATE,
+			docker.APPVAR_DOCKER_CLIENT: func() (*client.Client, error) {
+				return client.New(
+					client.FromEnv,
+					client.WithTimeout(time.Second*10),
+				)
+			},
 		})),
 		django.AppLogger(&logger.Logger{
 			Level:       logger.DBG,
@@ -188,6 +197,10 @@ func main() {
 
 	if _, _, err := migrator.AutoMigrate(context.Background()); err != nil {
 		panic(err)
+	}
+
+	for _, field := range (&auth.User{}).FieldDefs().Fields() {
+		fmt.Println("USER FIELD NAME: ", field.Name())
 	}
 
 	// testCommands()

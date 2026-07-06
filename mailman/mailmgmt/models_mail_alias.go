@@ -68,7 +68,7 @@ func (u *MailAlias) Fields() []any {
 				},
 				ScanTo:            &u.Destination,
 				ReverseName:       "UserAliases",
-				NoReverseRelation: true,
+				NoReverseRelation: false,
 				Rel: attrs.Relate(
 					&auth.User{}, "",
 					&attrs.ThroughModel{

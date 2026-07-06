@@ -2,6 +2,7 @@ package mailmgmt
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,33 +10,35 @@ import (
 	"time"
 
 	"github.com/Nigel2392/cache"
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
 	mailmgmt_cache "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
-	merrs "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/errors"
+	queries "github.com/Nigel2392/go-django/queries/src"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
+	"github.com/Nigel2392/go-django/src/contrib/auth"
 	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/except"
 	"github.com/Nigel2392/go-django/src/views"
+	"github.com/Nigel2392/go-signals"
 	"github.com/Nigel2392/goldcrest"
 	"github.com/Nigel2392/mux"
 	"github.com/Nigel2392/mux/middleware/authentication"
+	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 )
 
 const (
-	MAILSERVER_CONTAINER_NAME  = "mailmgmt.MAILSERVER_CONTAINER_NAME"
-	MAILSERVER_CACHING_ENABLED = "mailmgmt.MAILSERVER_CACHING_ENABLED"
-	EMAIL_REGEX                = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
+	_MAILSERVER_CONTAINER_INSPECT_CACHE_KEY = "mailmgmt.MAILSERVER_INSPECT_RESULT"
+	MAILSERVER_CONTAINER_NAME               = "mailmgmt.MAILSERVER_CONTAINER_NAME"
+	MAILSERVER_CACHING_ENABLED              = "mailmgmt.MAILSERVER_CACHING_ENABLED"
+	EMAIL_REGEX                             = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
 )
 
 var CONFIG *MailManagementConfig
 
 type MailManagementConfig struct {
 	*apps.AppConfig
-	Docker                  *client.Client
-	MailServerContainerName string
-	res                     *client.ContainerInspectResult
 	//pool                    *shell.ExecPool
 }
 
@@ -48,39 +51,12 @@ func NewAppConfig() django.AppConfig {
 	CONFIG.ModelObjects = []attrs.Definer{
 		&MailAlias{},
 		&MailAliasUser{},
-		&UserMailQuota{},
+		&UserMailProfile{},
+		&UserMailProfileProxy{},
+		&Domain{},
 	}
 
 	CONFIG.Init = func(settings django.Settings) (err error) {
-		var ok bool
-		CONFIG.MailServerContainerName, ok = django.ConfigGetOK[string](
-			settings, MAILSERVER_CONTAINER_NAME, "mailserver",
-		)
-		if !ok || CONFIG.MailServerContainerName == "" {
-			return errors.New("no mailserver container name configured")
-		}
-
-		// Set up docker client
-		ctx := context.Background()
-		CONFIG.Docker, err = client.New(
-			client.FromEnv,
-			client.WithTimeout(time.Second*10),
-		)
-		if err != nil {
-			return err
-		}
-
-		// Check mailserver exists
-		_, err = CONFIG.Docker.ContainerInspect(
-			ctx, CONFIG.MailServerContainerName,
-			client.ContainerInspectOptions{},
-		)
-		if err != nil {
-			return fmt.Errorf(
-				"could not retrieve container %q, are you sure it is running? %w",
-				CONFIG.MailServerContainerName, err,
-			)
-		}
 
 		//	if !inspectResult.Container.State.Running {
 		//
@@ -95,21 +71,7 @@ func NewAppConfig() django.AppConfig {
 	}
 
 	CONFIG.Ready = func() error {
-
 		goldcrest.Register(django.HOOK_SERVER_ERROR, 0, django.ServerErrorHook(func(w http.ResponseWriter, r *http.Request, app *django.Application, err except.ServerError) {
-			if !merrs.IsMailserverError(err) {
-				return
-			}
-
-			var mErr = new(merrs.MailserverError)
-			if !errors.As(err, mErr) {
-				panic(err)
-			}
-
-			switch mErr.Code {
-			case merrs.CodeUnknown:
-			case merrs.CodeNotRunning:
-			}
 
 		}))
 		return nil
@@ -143,6 +105,22 @@ func NewAppConfig() django.AppConfig {
 		htmxAliases.Post("/add", views.Serve(ViewAddAliasHtmx))
 	}
 
+	queries.SignalPostModelCreate.Listen(func(s signals.Signal[queries.SignalSave], ss queries.SignalSave) (err error) {
+		switch i := ss.Instance.(type) {
+		case *auth.User:
+			_, err = queries.GetQuerySetWithContext(ss.Context, &UserMailProfile{}).Create(&UserMailProfile{
+				User: i,
+			})
+			if err != nil {
+				return err
+			}
+			_, _, err = queries.GetQuerySetWithContext(ss.Context, &UserMailProfileProxy{}).GetOrCreate(&UserMailProfileProxy{
+				User: i,
+			})
+		}
+		return err
+	})
+
 	return CONFIG
 }
 
@@ -158,15 +136,61 @@ func Cache() *mailmgmt_cache.MailMgmtCache {
 	)
 }
 
-func (c *MailManagementConfig) InspectDockerMailServer(ctx context.Context, size bool) (client.ContainerInspectResult, error) {
-	if c.res != nil {
-		return *c.res, nil
+func MailServer(ctx context.Context, refresh bool) (*container.InspectResponse, error) {
+	cli, err := docker.DockerErr()
+	if err != nil {
+		return nil, err
 	}
-	var res, err = c.Docker.ContainerInspect(
-		ctx, c.MailServerContainerName, client.ContainerInspectOptions{Size: size},
+
+	var (
+		result  container.InspectResponse
+		rawData []byte
+		cacheV  any
+		ok      bool
 	)
-	c.res = &res
-	return res, err
+
+	if refresh {
+		goto notCached
+	}
+
+	cacheV, err = cache.Get(ctx, _MAILSERVER_CONTAINER_INSPECT_CACHE_KEY)
+	if err != nil && !errors.Is(err, cache.ErrItemNotFound) {
+		return nil, err
+	}
+
+	rawData, ok = cacheV.([]byte)
+	if !ok || len(rawData) == 0 {
+		goto notCached
+	}
+
+	err = json.Unmarshal(rawData, &result)
+	if err != nil {
+		return nil, err
+	}
+
+notCached:
+	containerName := django.ConfigGet(
+		django.Global.Settings,
+		MAILSERVER_CONTAINER_NAME,
+		"mailserver",
+	)
+
+	res, err := cli.ContainerInspect(
+		ctx, containerName,
+		client.ContainerInspectOptions{},
+	)
+	if err != nil {
+		return nil, ErrDocker.WithCause(fmt.Errorf(
+			"could not retrieve container %q, are you sure it is running? %w",
+			containerName, err,
+		))
+	}
+
+	cache.Set(
+		ctx, _MAILSERVER_CONTAINER_INSPECT_CACHE_KEY, []byte(res.Raw), time.Minute*5,
+	)
+
+	return &res.Container, nil
 }
 
 var _matchEmail = regexp.MustCompile(EMAIL_REGEX)

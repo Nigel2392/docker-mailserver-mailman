@@ -37,10 +37,7 @@ func NewAppConfig() django.AppConfig {
 		"auth",
 	}
 
-	LDAP.ModelObjects = []attrs.Definer{
-		// &MailAliasUser{},
-		&Domain{},
-	}
+	LDAP.ModelObjects = []attrs.Definer{}
 
 	LDAP.Server = ldapserver.NewServer()
 	LDAP.Server.ReadTimeout = time.Second * 5

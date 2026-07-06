@@ -191,7 +191,7 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	if domainToFind := walkASTForAttribute(r.Filter(), "mail"); strings.HasPrefix(domainToFind, "*@") {
 		cleanDomain := strings.TrimPrefix(domainToFind, "*@")
 
-		domainRow, err := queries.GetQuerySetWithContext(ctx, &Domain{}).
+		domainRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.Domain{}).
 			Filter("Domain__iexact", cleanDomain).
 			First()
 
@@ -222,6 +222,7 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		userRow, err := auth.GetUserQuerySet().
 			WithContext(ctx).
 			Filter("Email__iexact", emailToFind).
+			Filter("UserMailProfile.Disabled", false).
 			Get()
 
 		if err == nil && userRow != nil {

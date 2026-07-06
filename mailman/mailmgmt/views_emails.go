@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -24,7 +25,7 @@ import (
 	"github.com/Nigel2392/go-django/src/views/list"
 )
 
-var ViewEmails = &list.View[*auth.User]{
+var ViewEmails = &list.View[*UserMailProfileProxy]{
 	AllowedMethods:  []string{http.MethodGet},
 	BaseTemplateKey: "main",
 	TemplateName:    "mailmgmt/emails/emails.tmpl",
@@ -32,13 +33,18 @@ var ViewEmails = &list.View[*auth.User]{
 	AmountParam:     "limit",
 	MaxAmount:       DEFAULT_LIMIT_CHOICES[len(DEFAULT_LIMIT_CHOICES)-1],
 	DefaultAmount:   DEFAULT_LIMIT_CHOICES[0],
-	Mixins: func(r *http.Request, v *list.View[*auth.User]) []views.View {
+	Mixins: func(r *http.Request, v *list.View[*UserMailProfileProxy]) []views.View {
 		return []views.View{SetupViewMixin{Func: func(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
 			r = r.WithContext(list.SetAllowListRowSelect(r.Context(), true))
 			return w, r
 		}}}
 	},
-	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*auth.User]) (ctx.Context, error) {
+	QuerySet: func(r *http.Request) *queries.QuerySet[*UserMailProfileProxy] {
+		return queries.
+			GetQuerySetWithContext(r.Context(), &UserMailProfileProxy{}).
+			OrderBy("User.Email")
+	},
+	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*UserMailProfileProxy]) (ctx.Context, error) {
 		c := ctx.RequestContext(r)
 		pageValue, _ := strconv.Atoi(r.URL.Query().Get("page"))
 		amountValue, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -49,12 +55,12 @@ var ViewEmails = &list.View[*auth.User]{
 		c.Set("view.limitChoices", DEFAULT_LIMIT_CHOICES)
 		return c, nil
 	},
-	TitleFieldColumn: func(col list.ListColumn[*auth.User]) list.ListColumn[*auth.User] {
+	TitleFieldColumn: func(col list.ListColumn[*UserMailProfileProxy]) list.ListColumn[*UserMailProfileProxy] {
 		return list.RowSelectColumn(
 			"list-form",
 			nil,
 			nil,
-			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *auth.User) string { return "" }),
+			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *UserMailProfileProxy) string { return "" }),
 			map[string]any{
 				"data-table-list-target": "selectAll",
 				"data-action":            "change->table-list#toggleAllCheckboxes",
@@ -65,31 +71,31 @@ var ViewEmails = &list.View[*auth.User]{
 			},
 		)
 	},
-	ListColumns: []list.ListColumn[*auth.User]{
-		list.Column[*auth.User](
+	ListColumns: []list.ListColumn[*UserMailProfileProxy]{
+		list.Column[*UserMailProfileProxy](
 			trans.S("Email"),
 			"Email",
 		),
 		list.FuncColumn(
 			trans.S("Name"),
-			func(r *http.Request, defs attrs.Definitions, row *auth.User) interface{} {
+			func(r *http.Request, defs attrs.Definitions, row *UserMailProfileProxy) interface{} {
 				return fmt.Sprintf("%s %s", row.FirstName, row.LastName)
 			},
 		),
-		list.BooleanFieldColumn[*auth.User](
+		list.BooleanFieldColumn[*UserMailProfileProxy](
 			trans.S("IsAdministrator"),
 			"IsAdministrator",
 		),
-		list.BooleanFieldColumn[*auth.User](
+		list.BooleanFieldColumn[*UserMailProfileProxy](
 			trans.S("IsActive"),
 			"IsActive",
 		),
-		list.DateTimeFieldColumn[*auth.User](
+		list.DateTimeFieldColumn[*UserMailProfileProxy](
 			trans.DEFAULT_TIME_FORMAT,
 			trans.S("LastLogin"),
 			"LastLogin",
 		),
-		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *auth.User) template.HTML {
+		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *UserMailProfileProxy) template.HTML {
 			var html = `<div class="mailmgmt-list-item-actions">
                 <button class="mailmgmt-action-button mailmgmt-action-alias"
                     hx-get="%s?email=%s"
@@ -118,10 +124,11 @@ var ViewEmails = &list.View[*auth.User]{
                 </a>
             </div>`
 
+			var eml = url.QueryEscape(row.Email.Address)
 			return template.HTML(fmt.Sprintf(html,
-				django.Reverse("mailmgmt:htmx:alias:add"), row.Email.Address, trans.T(r.Context(), "Add new alias"),
-				django.Reverse("mailmgmt:htmx:emails:update"), row.Email.Address, trans.T(r.Context(), "Change Password"),
-				django.Reverse("mailmgmt:emails:delete"), row.Email.Address, trans.T(r.Context(), "Delete"),
+				django.Reverse("mailmgmt:htmx:alias:add"), eml, trans.T(r.Context(), "Add new alias"),
+				django.Reverse("mailmgmt:htmx:emails:update"), eml, trans.T(r.Context(), "Change Password"),
+				django.Reverse("mailmgmt:emails:delete"), eml, trans.T(r.Context(), "Delete"),
 			))
 		}),
 	},

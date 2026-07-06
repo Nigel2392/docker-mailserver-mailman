@@ -9,6 +9,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	queries "github.com/Nigel2392/go-django/queries/src"
 	django "github.com/Nigel2392/go-django/src"
@@ -118,7 +119,7 @@ func Upload(ctx context.Context, config *SieveConfigData) error {
 		return err
 	}
 
-	mailserver, err := mailmgmt.CONFIG.InspectDockerMailServer(ctx, false)
+	mailserver, err := mailmgmt.MailServer(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func Upload(ctx context.Context, config *SieveConfigData) error {
 		Content:         &b,
 	}
 
-	_, err = mailmgmt.CONFIG.Docker.CopyToContainer(ctx, mailserver.Container.ID, opts)
+	_, err = docker.Docker().CopyToContainer(ctx, mailserver.ID, opts)
 	if err != nil {
 		return fmt.Errorf("failed to copy sieve script: %w", err)
 	}

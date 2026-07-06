@@ -62,7 +62,7 @@ func TestLDAPServer(t *testing.T) {
 		&users.UserGroup{},
 		&users.GroupPermission{},
 		&users.UserPermission{},
-		&appldap.Domain{},
+		&mailmgmt.Domain{},
 		&mailmgmt.MailAlias{},
 		&mailmgmt.MailAliasUser{},
 	)
@@ -108,7 +108,7 @@ func TestLDAPServer(t *testing.T) {
 		t.Fatalf("Failed to create test alias: %v", err)
 	}
 
-	var domain = &appldap.Domain{
+	var domain = &mailmgmt.Domain{
 		Name:   "Default Domain",
 		Domain: "example.com",
 	}
