@@ -122,151 +122,147 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 // SEARCH Handler (Users & Aliases)
 // -------------------------------------------------------------
 func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
-	var sessionData = m.Client.GetData()
-	if sessionData == nil {
-		log.Println("[SEARCH] Rejected unauthenticated search attempt")
-		res := ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultInsufficientAccessRights)
-		w.Write(res)
-		return
-	}
-
-	// Only accounts marker with IsAdministrator = True can search the directory.
+	sessionData := m.Client.GetData()
 	isLdapAdmin, ok := sessionData.(bool)
 	if !ok || !isLdapAdmin {
-		log.Println("[SEARCH] Rejected unauthorized search attempt by non-admin")
-		res := ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultInsufficientAccessRights)
-		w.Write(res)
+		log.Println("[SEARCH] Rejected unauthorized search attempt")
+		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultInsufficientAccessRights))
 		return
 	}
 
 	r := m.GetSearchRequest()
 	baseDN := string(r.BaseObject())
+
+	// 1. Flatten the AST into a map
+	params := make(map[string]string)
+	flattenFilterAST(r.Filter(), params)
+
+	log.Printf("[SEARCH] Base: %s | Params: %v", baseDN, params)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if aliasToFind := walkASTForAttribute(r.Filter(), "otherMailbox"); aliasToFind != "" {
-		aliasRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.MailAlias{}).
-			Filter("Source__iexact", aliasToFind).
-			Filter("IsActive", true).
-			First()
-
-		if err == nil && aliasRow != nil && aliasRow.Object != nil {
-			alias := aliasRow.Object
-			entry := ldapserver.NewSearchResultEntry("cn=" + alias.Source.Address + "," + baseDN)
-
-			entry.AddAttribute(
-				message.AttributeDescription("objectClass"),
-				message.AttributeValue("user"),
-				message.AttributeValue("alias"),
-			)
-			entry.AddAttribute(
-				message.AttributeDescription("otherMailbox"),
-				message.AttributeValue(alias.Source.Address),
-			)
-
-			userRows, _ := alias.Destination.Objects().WithContext(ctx).All()
-			var mailValues []message.AttributeValue
-			for u := range userRows.Objects() {
-				mailValues = append(
-					mailValues,
-					message.AttributeValue(u.Email.Address),
-				)
-			}
-
-			if len(mailValues) > 0 {
-				entry.AddAttribute(
-					message.AttributeDescription("mail"),
-					mailValues...)
-			}
-			w.Write(entry)
-		}
-
-		res := ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess)
-		w.Write(res)
-		return
+	// 2. Route the request based on the parameters Postfix sent
+	if alias := params["othermailbox"]; alias != "" {
+		searchAlias(ctx, w, baseDN, alias)
+	} else if mail := params["mail"]; strings.HasPrefix(mail, "*@") {
+		searchDomain(ctx, w, baseDN, strings.TrimPrefix(mail, "*@"))
+	} else if mail != "" {
+		searchUser(ctx, w, baseDN, mail)
+	} else {
+		log.Printf("[SEARCH] Unhandled query parameters: %v", params)
 	}
 
-	// ROUTE 2: DOMAIN SEARCH
-	// Postfix checks if domains exist by querying: mail=*@domain.com
-	if domainToFind := walkASTForAttribute(r.Filter(), "mail"); strings.HasPrefix(domainToFind, "*@") {
-		cleanDomain := strings.TrimPrefix(domainToFind, "*@")
-
-		domainRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.Domain{}).
-			Filter("Domain__iexact", cleanDomain).
-			First()
-
-		if err == nil && domainRow != nil && domainRow.Object != nil {
-			domain := domainRow.Object
-			entry := ldapserver.NewSearchResultEntry("dc=" + domain.Domain + "," + baseDN)
-			entry.AddAttribute(
-				message.AttributeDescription("objectClass"),
-				message.AttributeValue("domain"),
-			)
-			entry.AddAttribute(
-				message.AttributeDescription("dc"),
-				message.AttributeValue(domain.Domain))
-			entry.AddAttribute(
-				message.AttributeDescription("mailEnabled"),
-				message.AttributeValue("TRUE"),
-			)
-			w.Write(entry)
-		}
-
-		res := ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess)
-		w.Write(res)
-		return
-	}
-
-	// ROUTE 3: USER SEARCH
-	if emailToFind := walkASTForAttribute(r.Filter(), "mail"); emailToFind != "" {
-		userRow, err := auth.GetUserQuerySet().
-			WithContext(ctx).
-			Filter("Email__iexact", emailToFind).
-			Filter("UserMailProfile.Disabled", false).
-			Get()
-
-		if err == nil && userRow != nil {
-			user := userRow.Object
-			entry := ldapserver.NewSearchResultEntry("uid=" + user.Username + "," + baseDN)
-			entry.AddAttribute(
-				message.AttributeDescription("objectClass"),
-				message.AttributeValue("user"),
-				message.AttributeValue("person"),
-			)
-			entry.AddAttribute(
-				message.AttributeDescription("uid"),
-				message.AttributeValue(user.Username),
-			)
-			if user.Email != nil {
-				entry.AddAttribute(
-					message.AttributeDescription("mail"),
-					message.AttributeValue(user.Email.Address),
-				)
-			}
-
-			if user.FirstName != "" || user.LastName != "" {
-				entry.AddAttribute(
-					message.AttributeDescription("cn"),
-					message.AttributeValue(strings.TrimSpace(user.FirstName+" "+user.LastName)),
-				)
-			} else {
-				entry.AddAttribute(
-					message.AttributeDescription("cn"),
-					message.AttributeValue(user.Username),
-				)
-			}
-
-			w.Write(entry)
-		}
-	}
-
-	res := ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess)
-	w.Write(res)
+	// Always conclude the search operation
+	w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
 }
 
-// -------------------------------------------------------------
-// AST PARSER (Zero String Parsing)
-// -------------------------------------------------------------
+func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, aliasMail string) {
+	aliasRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.MailAlias{}).
+		Filter("Source__iexact", aliasMail).
+		Filter("IsActive", true).
+		First()
+
+	if err != nil || aliasRow == nil || aliasRow.Object == nil {
+		return
+	}
+
+	alias := aliasRow.Object
+	entry := ldapserver.NewSearchResultEntry("cn=" + alias.Source.Address + "," + baseDN)
+
+	entry.AddAttribute(
+		message.AttributeDescription("objectClass"),
+		message.AttributeValue("user"),
+		message.AttributeValue("alias"),
+	)
+	entry.AddAttribute(
+		message.AttributeDescription("otherMailbox"),
+		message.AttributeValue(alias.Source.Address),
+	)
+
+	userRows, _ := alias.Destination.Objects().WithContext(ctx).All()
+	var mailValues []message.AttributeValue
+	for u := range userRows.Objects() {
+		mailValues = append(mailValues, message.AttributeValue(u.Email.Address))
+	}
+
+	if len(mailValues) > 0 {
+		entry.AddAttribute(message.AttributeDescription("mail"), mailValues...)
+	}
+	w.Write(entry)
+}
+
+func searchDomain(ctx context.Context, w ldapserver.ResponseWriter, baseDN, domainName string) {
+	domainRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.Domain{}).
+		Filter("Domain__iexact", domainName).
+		First()
+
+	if err != nil || domainRow == nil || domainRow.Object == nil {
+		return
+	}
+
+	domain := domainRow.Object
+	entry := ldapserver.NewSearchResultEntry("dc=" + domain.Domain + "," + baseDN)
+	entry.AddAttribute(
+		message.AttributeDescription("objectClass"),
+		message.AttributeValue("domain"),
+	)
+	entry.AddAttribute(
+		message.AttributeDescription("dc"),
+		message.AttributeValue(domain.Domain),
+	)
+	entry.AddAttribute(
+		message.AttributeDescription("mailEnabled"),
+		message.AttributeValue("TRUE"),
+	)
+	w.Write(entry)
+}
+
+func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email string) {
+	userRow, err := queries.GetQuerySet(&mailmgmt.UserMailProfileProxy{}).
+		WithContext(ctx).
+		Filter("User.Email__iexact", email).
+		Filter("Deleted", false).
+		Get()
+
+	if err != nil || userRow == nil {
+		return
+	}
+
+	user := userRow.Object
+	entry := ldapserver.NewSearchResultEntry("uid=" + user.Username + "," + baseDN)
+	entry.AddAttribute(
+		message.AttributeDescription("objectClass"),
+		message.AttributeValue("user"),
+		message.AttributeValue("person"),
+	)
+	entry.AddAttribute(
+		message.AttributeDescription("uid"),
+		message.AttributeValue(user.Username),
+	)
+
+	if user.Email != nil {
+		entry.AddAttribute(
+			message.AttributeDescription("mail"),
+			message.AttributeValue(user.Email.Address),
+		)
+	}
+
+	if user.FirstName != "" || user.LastName != "" {
+		entry.AddAttribute(
+			message.AttributeDescription("cn"),
+			message.AttributeValue(strings.TrimSpace(user.FirstName+" "+user.LastName)),
+		)
+	} else {
+		entry.AddAttribute(
+			message.AttributeDescription("cn"),
+			message.AttributeValue(user.Username),
+		)
+	}
+
+	w.Write(entry)
+}
+
 // walkASTForAttribute recursively evaluates the binary AST constructed
 // by vjeantet/goldap. It completely bypasses string serialization issues.
 func walkASTForAttribute(f message.Filter, targetAttr string) string {
@@ -304,4 +300,32 @@ func walkASTForAttribute(f message.Filter, targetAttr string) string {
 		}
 	}
 	return ""
+}
+
+// flattenFilterAST walks the binary AST once and extracts all queried attributes
+// into a simple, easy-to-read map.
+// Example: (&(objectClass=user)(mail=nigel@go-dev.nl)) -> map["objectclass":"user", "mail":"nigel@go-dev.nl"]
+func flattenFilterAST(f message.Filter, out map[string]string) {
+	switch ft := f.(type) {
+	case message.FilterEqualityMatch:
+		out[strings.ToLower(string(ft.AttributeDesc()))] = string(ft.AssertionValue())
+	case message.FilterSubstrings:
+		attr := strings.ToLower(string(ft.Type_()))
+		for _, sub := range ft.Substrings() {
+			if finalStr, ok := sub.(message.SubstringFinal); ok {
+				out[attr] = "*@" + string(finalStr)
+			}
+			if anyStr, ok := sub.(message.SubstringAny); ok {
+				out[attr] = "*@" + string(anyStr)
+			}
+		}
+	case message.FilterAnd:
+		for _, subFilter := range ft {
+			flattenFilterAST(subFilter, out)
+		}
+	case message.FilterOr:
+		for _, subFilter := range ft {
+			flattenFilterAST(subFilter, out)
+		}
+	}
 }

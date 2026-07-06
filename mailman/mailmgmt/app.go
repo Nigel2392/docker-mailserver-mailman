@@ -42,6 +42,19 @@ type MailManagementConfig struct {
 	//pool                    *shell.ExecPool
 }
 
+var _, _ = queries.SignalPostModelCreate.Listen(func(s signals.Signal[queries.SignalSave], ss queries.SignalSave) (err error) {
+	switch i := ss.Instance.(type) {
+	case *auth.User:
+		_, _, err = queries.
+			GetQuerySetWithContext(ss.Context, &UserMailProfileProxy{}).
+			Filter("User", i).
+			GetOrCreate(&UserMailProfileProxy{
+				User: i,
+			})
+	}
+	return err
+})
+
 func NewAppConfig() django.AppConfig {
 
 	CONFIG = &MailManagementConfig{
@@ -104,22 +117,6 @@ func NewAppConfig() django.AppConfig {
 		htmxAliases.Get("/add", views.Serve(ViewAddAliasHtmx), "add")
 		htmxAliases.Post("/add", views.Serve(ViewAddAliasHtmx))
 	}
-
-	queries.SignalPostModelCreate.Listen(func(s signals.Signal[queries.SignalSave], ss queries.SignalSave) (err error) {
-		switch i := ss.Instance.(type) {
-		case *auth.User:
-			_, err = queries.GetQuerySetWithContext(ss.Context, &UserMailProfile{}).Create(&UserMailProfile{
-				User: i,
-			})
-			if err != nil {
-				return err
-			}
-			_, _, err = queries.GetQuerySetWithContext(ss.Context, &UserMailProfileProxy{}).GetOrCreate(&UserMailProfileProxy{
-				User: i,
-			})
-		}
-		return err
-	})
 
 	return CONFIG
 }

@@ -65,6 +65,8 @@ func TestLDAPServer(t *testing.T) {
 		&mailmgmt.Domain{},
 		&mailmgmt.MailAlias{},
 		&mailmgmt.MailAliasUser{},
+		&mailmgmt.UserMailProfile{},
+		&mailmgmt.UserMailProfileProxy{},
 	)
 
 	// Reset the definitions to ensure all models are registered
