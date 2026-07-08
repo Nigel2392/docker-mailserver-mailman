@@ -8,3 +8,5 @@ out.log
 setup.example.txt
 node_modules/
 _*/
+go.work
+go.work.sum

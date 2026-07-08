@@ -29,7 +29,7 @@ func (m *MailAliasUser) FieldDefs() attrs.Definitions {
 	).WithTableName("mail_aliases_users")
 }
 
-func (m *MailAlias) UniqueTogether() [][]string {
+func (m *MailAliasUser) UniqueTogether() [][]string {
 	return [][]string{
 		{"AliasID", "UserID"},
 	}
@@ -67,7 +67,7 @@ func (u *MailAlias) Fields() []any {
 					HelpText: trans.S("Users belonging to this alias."),
 				},
 				ScanTo:            &u.Destination,
-				ReverseName:       "UserAliases",
+				ReverseName:       "Aliasses",
 				NoReverseRelation: false,
 				Rel: attrs.Relate(
 					&auth.User{}, "",

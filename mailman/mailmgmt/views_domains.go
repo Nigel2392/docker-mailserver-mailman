@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"net/mail"
 	"net/url"
 	"strconv"
 
 	queries "github.com/Nigel2392/go-django/queries/src"
 	django "github.com/Nigel2392/go-django/src"
+	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
-	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms/modelforms"
 	"github.com/Nigel2392/go-django/src/views"
@@ -62,10 +61,14 @@ var ViewDomains = &list.View[*Domain]{
 	},
 	ListColumns: []list.ListColumn[*Domain]{
 		list.Column[*Domain](
+			trans.S("ID"),
+			"ID",
+		),
+		list.Column[*Domain](
 			trans.S("Name"),
 			"Name",
 		),
-		list.BooleanFieldColumn[*Domain](
+		list.Column[*Domain](
 			trans.S("Domain"),
 			"Domain",
 		),
@@ -79,24 +82,35 @@ var ViewDomains = &list.View[*Domain]{
             </div>`
 
 			return template.HTML(fmt.Sprintf(html,
-				django.Reverse("mailmgmt:emails:delete"), url.QueryEscape(row.Domain), trans.T(r.Context(), "Delete"),
+				django.Reverse("mailmgmt:domains:delete"), url.QueryEscape(row.Domain), trans.T(r.Context(), "Delete"),
 			))
 		}),
 	},
 }
 
-var ViewAddDomainHtmx = &ModalFormView[*modelforms.BaseModelForm[*Domain]]{
-	Template:       "mailmgmt/emails/modal_form.tmpl",
-	SubmitURL:      "mailmgmt:htmx:domains:add",
-	SuccessText:    trans.S("Domain created successfully."),
-	Title:          trans.S("Add a new domain"),
-	AllowedMethods: []string{"GET", "POST"},
-	GetForm: func(r *http.Request) (*modelforms.BaseModelForm[*Domain], error) {
-		return nil, nil
+var ViewAddDomain = &views.FormView[*modelforms.BaseModelForm[*Domain]]{
+	BaseView: views.BaseView{
+		AllowedMethods:  []string{"GET", "POST"},
+		BaseTemplateKey: "main",
+		TemplateName:    "mailmgmt/domains/add_domain.tmpl",
 	},
-	IsValid: func(r *http.Request, f *modelforms.BaseModelForm[*Domain]) (*modelforms.BaseModelForm[*Domain], bool, error) {
-		_, err := f.Save()
-		return f, true, err
+	SuccessFn: func(w http.ResponseWriter, req *http.Request, form *modelforms.BaseModelForm[*Domain]) {
+		messages.Success(req, trans.T(req.Context(), "Successfully added domain"))
+		http.Redirect(w, req, django.Reverse("mailmgmt:domains"), http.StatusSeeOther)
+	},
+	GetFormFn: func(req *http.Request) *modelforms.BaseModelForm[*Domain] {
+		var f = modelforms.NewBaseModelForm(
+			req.Context(), &Domain{},
+		)
+
+		f.SetFields(
+			"Name",
+			"Domain",
+		)
+
+		f.Load()
+
+		return f
 	},
 }
 
@@ -105,14 +119,9 @@ var ViewDeleteDomain = &DeleteView[*Domain]{
 	Template: "mailmgmt/domains/delete_domain.tmpl",
 	NextURL:  "mailmgmt:domains",
 	GetObject: func(bdv *BoundDeleteView[*Domain], r *http.Request) (*Domain, error) {
-		var eml, err = mail.ParseAddress(r.URL.Query().Get("domain"))
-		if err != nil {
-			return nil, errs.ErrInvalidSyntax
-		}
-
 		row, err := queries.GetQuerySet(&Domain{}).
 			WithContext(r.Context()).
-			Filter("Domain__iexact", eml.Address).
+			Filter("Domain__iexact", r.URL.Query().Get("domain")).
 			Get()
 
 		return row.Object, err

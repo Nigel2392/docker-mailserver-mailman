@@ -63,8 +63,13 @@
     height: 100%;
     width: 100%;
 }
+.mailmgmt-list-toolbar a,
 .mailmgmt-list-toolbar button,
 .mailmgmt-list-toolbar .button {
+    font-size: 0.8rem;
+    letter-spacing: 0.02rem;
+    padding-block: 0.25rem;
+    padding-inline: 0.375rem;
     border: 0;
     border-right: var(--b);
     width: auto;
@@ -76,12 +81,15 @@
     align-items: center;
     color: var(--color-primary-accent);
     background-color: transparent;
+    text-decoration: none;
 }
+.mailmgmt-list-toolbar .mailmgmt-list-actions.pre a,
 .mailmgmt-list-toolbar .mailmgmt-list-actions.pre button,
 .mailmgmt-list-toolbar .mailmgmt-list-actions.pre .button {
     border-left: 0;
     border-right: var(--b);
 }
+.mailmgmt-list-toolbar .mailmgmt-list-actions.post a,
 .mailmgmt-list-toolbar .mailmgmt-list-actions.post button,
 .mailmgmt-list-toolbar .mailmgmt-list-actions.post .button {
     border-right: 0;

@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Nigel2392/go-django/djester/quest"
 	queries "github.com/Nigel2392/go-django/queries/src"
 	"github.com/Nigel2392/go-django/queries/src/drivers"
 	"github.com/Nigel2392/go-django/queries/src/models"
-	"github.com/Nigel2392/go-django/queries/src/quest"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/Nigel2392/go-django/src/contrib/auth/users"
@@ -19,7 +19,7 @@ import (
 
 	appldap "github.com/Nigel2392/docker-mailserver-mailman/mailman/ldap"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
-	"github.com/Nigel2392/go-django/src/djester/testdb"
+	"github.com/Nigel2392/go-django/djester/testdb"
 
 	"github.com/go-ldap/ldap/v3"
 )
@@ -66,7 +66,6 @@ func TestLDAPServer(t *testing.T) {
 		&mailmgmt.MailAlias{},
 		&mailmgmt.MailAliasUser{},
 		&mailmgmt.UserMailProfile{},
-		&mailmgmt.UserMailProfileProxy{},
 	)
 
 	// Reset the definitions to ensure all models are registered

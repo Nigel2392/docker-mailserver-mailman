@@ -5,8 +5,9 @@ go 1.26.3
 require (
 	github.com/Nigel2392/cache v1.0.4
 	github.com/Nigel2392/errors v1.0.0
-	github.com/Nigel2392/go-django v1.7.1-0.20260705222839-2fcc9232d9ba
-	github.com/Nigel2392/go-django/queries v0.0.0-20260705222839-2fcc9232d9ba
+	github.com/Nigel2392/go-django v1.7.4
+	github.com/Nigel2392/go-django/djester v1.7.4
+	github.com/Nigel2392/go-django/queries v1.7.4
 	github.com/Nigel2392/go-signals v1.1.1
 	github.com/Nigel2392/goldcrest v1.0.4
 	github.com/Nigel2392/mux v1.6.1-0.20251030144343-070717da1ff8
@@ -22,7 +23,7 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/Azure/go-ntlmssp v0.1.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Nigel2392/go-telepath v1.4.3 // indirect
@@ -56,7 +57,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/justinas/nosurf v1.2.0 // indirect
-	github.com/lestrrat-go/strftime v1.1.1 // indirect
+	github.com/lestrrat-go/strftime v1.2.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
@@ -80,7 +81,7 @@ require (
 	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect

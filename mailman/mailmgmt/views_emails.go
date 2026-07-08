@@ -25,7 +25,7 @@ import (
 	"github.com/Nigel2392/go-django/src/views/list"
 )
 
-var ViewEmails = &list.View[*UserMailProfileProxy]{
+var ViewEmails = &list.View[*auth.User]{
 	AllowedMethods:  []string{http.MethodGet},
 	BaseTemplateKey: "main",
 	TemplateName:    "mailmgmt/emails/emails.tmpl",
@@ -33,18 +33,19 @@ var ViewEmails = &list.View[*UserMailProfileProxy]{
 	AmountParam:     "limit",
 	MaxAmount:       DEFAULT_LIMIT_CHOICES[len(DEFAULT_LIMIT_CHOICES)-1],
 	DefaultAmount:   DEFAULT_LIMIT_CHOICES[0],
-	Mixins: func(r *http.Request, v *list.View[*UserMailProfileProxy]) []views.View {
+	Mixins: func(r *http.Request, v *list.View[*auth.User]) []views.View {
 		return []views.View{SetupViewMixin{Func: func(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
 			r = r.WithContext(list.SetAllowListRowSelect(r.Context(), true))
 			return w, r
 		}}}
 	},
-	QuerySet: func(r *http.Request) *queries.QuerySet[*UserMailProfileProxy] {
+	QuerySet: func(r *http.Request) *queries.QuerySet[*auth.User] {
 		return queries.
-			GetQuerySetWithContext(r.Context(), &UserMailProfileProxy{}).
-			OrderBy("User.Email")
+			GetQuerySetWithContext(r.Context(), &auth.User{}).
+			Select("*", "Profile.*").
+			OrderBy("Email")
 	},
-	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*UserMailProfileProxy]) (ctx.Context, error) {
+	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*auth.User]) (ctx.Context, error) {
 		c := ctx.RequestContext(r)
 		pageValue, _ := strconv.Atoi(r.URL.Query().Get("page"))
 		amountValue, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -55,12 +56,12 @@ var ViewEmails = &list.View[*UserMailProfileProxy]{
 		c.Set("view.limitChoices", DEFAULT_LIMIT_CHOICES)
 		return c, nil
 	},
-	TitleFieldColumn: func(col list.ListColumn[*UserMailProfileProxy]) list.ListColumn[*UserMailProfileProxy] {
+	TitleFieldColumn: func(col list.ListColumn[*auth.User]) list.ListColumn[*auth.User] {
 		return list.RowSelectColumn(
 			"list-form",
 			nil,
 			nil,
-			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *UserMailProfileProxy) string { return "" }),
+			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *auth.User) string { return "" }),
 			map[string]any{
 				"data-table-list-target": "selectAll",
 				"data-action":            "change->table-list#toggleAllCheckboxes",
@@ -71,31 +72,37 @@ var ViewEmails = &list.View[*UserMailProfileProxy]{
 			},
 		)
 	},
-	ListColumns: []list.ListColumn[*UserMailProfileProxy]{
-		list.Column[*UserMailProfileProxy](
+	ListColumns: []list.ListColumn[*auth.User]{
+		list.Column[*auth.User](
 			trans.S("Email"),
 			"Email",
 		),
 		list.FuncColumn(
 			trans.S("Name"),
-			func(r *http.Request, defs attrs.Definitions, row *UserMailProfileProxy) interface{} {
+			func(r *http.Request, defs attrs.Definitions, row *auth.User) interface{} {
 				return fmt.Sprintf("%s %s", row.FirstName, row.LastName)
 			},
 		),
-		list.BooleanFieldColumn[*UserMailProfileProxy](
-			trans.S("IsAdministrator"),
-			"IsAdministrator",
+		list.FuncColumn[*auth.User](
+			trans.S("Quota"),
+			func(r *http.Request, defs attrs.Definitions, row *auth.User) any {
+				var profile, ok = defs.Get("Profile").(*UserMailProfile)
+				if !ok {
+					return ""
+				}
+				return profile.FormattedBytes()
+			},
 		),
-		list.BooleanFieldColumn[*UserMailProfileProxy](
+		list.BooleanFieldColumn[*auth.User](
 			trans.S("IsActive"),
 			"IsActive",
 		),
-		list.DateTimeFieldColumn[*UserMailProfileProxy](
+		list.DateTimeFieldColumn[*auth.User](
 			trans.DEFAULT_TIME_FORMAT,
 			trans.S("LastLogin"),
 			"LastLogin",
 		),
-		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *UserMailProfileProxy) template.HTML {
+		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *auth.User) template.HTML {
 			var html = `<div class="mailmgmt-list-item-actions">
                 <button class="mailmgmt-action-button mailmgmt-action-alias"
                     hx-get="%s?email=%s"
@@ -126,7 +133,7 @@ var ViewEmails = &list.View[*UserMailProfileProxy]{
 
 			var eml = url.QueryEscape(row.Email.Address)
 			return template.HTML(fmt.Sprintf(html,
-				django.Reverse("mailmgmt:htmx:alias:add"), eml, trans.T(r.Context(), "Add new alias"),
+				django.Reverse("mailmgmt:htmx:aliasses:add"), eml, trans.T(r.Context(), "Add new alias"),
 				django.Reverse("mailmgmt:htmx:emails:update"), eml, trans.T(r.Context(), "Change Password"),
 				django.Reverse("mailmgmt:emails:delete"), eml, trans.T(r.Context(), "Delete"),
 			))
@@ -135,11 +142,13 @@ var ViewEmails = &list.View[*UserMailProfileProxy]{
 }
 
 var ViewAddEmailHtmx = &ModalFormView[*auth.BaseUserForm]{
-	Template:       "mailmgmt/emails/modal_form.tmpl",
-	SubmitURL:      "mailmgmt:htmx:emails:add",
-	SuccessText:    trans.S("Email created successfully."),
-	Title:          trans.S("Add a new E-mail adress"),
-	AllowedMethods: []string{"GET", "POST"},
+	GenericModalView: GenericModalView[*BoundFormModalView[*auth.BaseUserForm]]{
+		Template:       "mailmgmt/emails/modal_form.tmpl",
+		Title:          trans.S("Add a new E-mail adress"),
+		AllowedMethods: []string{"GET", "POST"},
+	},
+	SubmitURL:   "mailmgmt:htmx:emails:add",
+	SuccessText: trans.S("Email created successfully."),
 	GetForm: func(r *http.Request) (*auth.BaseUserForm, error) {
 		var opts = auth.RegisterFormConfig{AskForNames: true}
 		return auth.UserRegisterForm(r, opts), nil
@@ -155,10 +164,12 @@ var ViewAddEmailHtmx = &ModalFormView[*auth.BaseUserForm]{
 }
 
 var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
-	Template:       "mailmgmt/emails/modal_form.tmpl",
-	SuccessText:    trans.S("Email password updated successfully."),
-	Title:          trans.S("Update E-mail password"),
-	AllowedMethods: []string{"GET", "POST"},
+	GenericModalView: GenericModalView[*BoundFormModalView[forms.Form]]{
+		Template:       "mailmgmt/emails/modal_list.tmpl",
+		Title:          trans.S("Update E-mail password"),
+		AllowedMethods: []string{"GET", "POST"},
+	},
+	SuccessText: trans.S("Email password updated successfully."),
 	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
 		return fmt.Sprintf("%s?email=%s",
 			django.Reverse("mailmgmt:htmx:emails:update"),
@@ -166,7 +177,6 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 		)
 	},
 	GetForm: func(r *http.Request) (forms.Form, error) {
-
 		var form = forms.NewBaseForm(
 			r.Context(), forms.WithFields(
 				fields.EmailField(
@@ -240,25 +250,40 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 	//},
 }
 
-var ViewDeleteEmail = &DeleteView[*auth.User]{
+var ViewDeleteEmail = &DeleteView[*UserMailProfile]{
 	BaseKey:  "main",
 	Template: "mailmgmt/emails/delete_email.tmpl",
 	NextURL:  "mailmgmt:emails",
-	GetObject: func(bdv *BoundDeleteView[*auth.User], r *http.Request) (*auth.User, error) {
+	GetObject: func(bdv *BoundDeleteView[*UserMailProfile], r *http.Request) (*UserMailProfile, error) {
 		var eml, err = mail.ParseAddress(r.URL.Query().Get("email"))
 		if err != nil {
 			return nil, errs.ErrInvalidSyntax
 		}
 
-		row, err := auth.GetUserQuerySet().
+		row, err := queries.GetQuerySet(&UserMailProfile{}).
 			WithContext(r.Context()).
-			Filter("Email__iexact", eml.Address).
+			Select("*", "User.*").
+			Filter("User.Email__iexact", eml.Address).
 			Get()
 
 		return row.Object, err
 	},
-	Delete: func(bdv *BoundDeleteView[*auth.User], r *http.Request, la *auth.User) (err error) {
-		la.IsActive = false
+	GetContext: func(bdv *BoundDeleteView[*UserMailProfile], hc *ctx.HTTPRequestContext) (ctx.Context, error) {
+		var aliassesQs, ok = bdv.Object.User.FieldDefs().Get("Aliasses").(*queries.RelM2M[attrs.Definer, attrs.Definer])
+		if !ok {
+			panic(fmt.Sprintf("could not convert %T", bdv.Object.User.FieldDefs().Get("Aliasses")))
+		}
+
+		var aliasRows, err = aliassesQs.Objects().All()
+		if err != nil {
+			return nil, err
+		}
+
+		hc.Set("aliasses", aliasRows)
+		return hc, nil
+	},
+	Delete: func(bdv *BoundDeleteView[*UserMailProfile], r *http.Request, la *UserMailProfile) (err error) {
+		la.Deleted = true
 		return la.Save(r.Context())
 	},
 }

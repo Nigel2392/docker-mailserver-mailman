@@ -157,6 +157,28 @@ h1, h2, h3, h4, h5, h6 {
     background-color: rgba(var(--bg-danger-rgb), 1);
     color: #fff;
 }
+.bg-standout {
+    background-color: rgba(var(--color-standout-rgb), 1);
+    color: #fff;
+}
+.color-debug {
+    color: rgba(var(--bg-debug-rgb), 1);
+}
+.color-info {
+    color: rgba(var(--bg-info-rgb), 1);
+}
+.color-success {
+    color: rgba(var(--bg-success-rgb), 1);
+}
+.color-warning {
+    color: rgba(var(--bg-warning-rgb), 1);
+}
+.color-danger {
+    color: rgba(var(--bg-danger-rgb), 1);
+}
+.color-standout {
+    color: rgba(var(--color-standout-rgb), 1);
+}
 .removeself {
     cursor: pointer;
 }
@@ -500,6 +522,9 @@ BUTTONS
     cursor: pointer;
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
+.btn-standalone {
+  max-width: 250px;
+}
 .btn-primary {
     color: var(--color-primary);
     border-color: var(--color-primary);
@@ -516,13 +541,21 @@ BUTTONS
 	color: var(--color-secondary);
 	background-color: var(--color-primary-accent);
 }
-.btn-standout {
+.btn-danger {
 	color: var(--color-standout);
 	border-color: var(--color-standout);
 }
-.btn-standout:hover {
+.btn-danger:hover {
 	color: var(--header-text-color);
 	background-color: var(--color-standout);
+}
+.btn-danger {
+	color: rgb(var(--bg-danger-rgb));
+	border-color: rgb(var(--bg-danger-rgb));
+}
+.btn-danger:hover {
+	color: var(--header-text-color);
+	background-color: rgb(var(--bg-danger-rgb));
 }
 /* 
 
@@ -610,6 +643,9 @@ hr.standout {
 }
 .mt-4 {
     margin-top: 1.5rem;
+}
+.m-0 {
+    margin: 0;
 }
 .m-1 {
     margin: 0.25rem;

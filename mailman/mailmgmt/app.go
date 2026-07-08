@@ -46,9 +46,9 @@ var _, _ = queries.SignalPostModelCreate.Listen(func(s signals.Signal[queries.Si
 	switch i := ss.Instance.(type) {
 	case *auth.User:
 		_, _, err = queries.
-			GetQuerySetWithContext(ss.Context, &UserMailProfileProxy{}).
+			GetQuerySetWithContext(ss.Context, &UserMailProfile{}).
 			Filter("User", i).
-			GetOrCreate(&UserMailProfileProxy{
+			GetOrCreate(&UserMailProfile{
 				User: i,
 			})
 	}
@@ -65,7 +65,6 @@ func NewAppConfig() django.AppConfig {
 		&MailAlias{},
 		&MailAliasUser{},
 		&UserMailProfile{},
-		&UserMailProfileProxy{},
 		&Domain{},
 	}
 
@@ -110,12 +109,18 @@ func NewAppConfig() django.AppConfig {
 		htmxEmails.Get("/update", views.Serve(ViewUpdateEmailPasswordHtmx), "update")
 		htmxEmails.Post("/update", views.Serve(ViewUpdateEmailPasswordHtmx))
 
-		aliases := group.Get("/aliases", views.Serve(ViewEmails), "aliases")
-		_ = aliases
+		aliasses := group.Get("/aliasses", views.Serve(ViewAliasses), "aliasses")
+		_ = aliasses
 
-		htmxAliases := htmx.Get("/alias", nil, "alias")
+		htmxAliases := htmx.Get("/aliasses", nil, "aliasses")
 		htmxAliases.Get("/add", views.Serve(ViewAddAliasHtmx), "add")
 		htmxAliases.Post("/add", views.Serve(ViewAddAliasHtmx))
+
+		domains := group.Get("/domains", views.Serve(ViewDomains), "domains")
+		domains.Get("/add", views.Serve(ViewAddDomain), "add")
+		domains.Post("/add", views.Serve(ViewAddDomain), "add")
+		domains.Get("/delete", views.Serve(ViewDeleteDomain), "delete")
+		domains.Post("/delete", views.Serve(ViewDeleteDomain), "delete")
 	}
 
 	return CONFIG

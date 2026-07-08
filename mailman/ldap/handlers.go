@@ -189,6 +189,7 @@ func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, alias
 	if len(mailValues) > 0 {
 		entry.AddAttribute(message.AttributeDescription("mail"), mailValues...)
 	}
+
 	w.Write(entry)
 }
 
@@ -219,10 +220,11 @@ func searchDomain(ctx context.Context, w ldapserver.ResponseWriter, baseDN, doma
 }
 
 func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email string) {
-	userRow, err := queries.GetQuerySet(&mailmgmt.UserMailProfileProxy{}).
+	userRow, err := queries.GetQuerySet(&auth.User{}).
 		WithContext(ctx).
-		Filter("User.Email__iexact", email).
-		Filter("Deleted", false).
+		Select("*", "Profile.*").
+		Filter("Email__iexact", email).
+		Filter("Profile.Deleted", false).
 		Get()
 
 	if err != nil || userRow == nil {
@@ -257,6 +259,14 @@ func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email 
 		entry.AddAttribute(
 			message.AttributeDescription("cn"),
 			message.AttributeValue(user.Username),
+		)
+	}
+
+	profile, ok := user.FieldDefs().Get("Profile").(*mailmgmt.UserMailProfile)
+	if ok && profile != nil && profile.Bytes > 0 {
+		entry.AddAttribute(
+			message.AttributeDescription("mailQuota"),
+			message.AttributeValue(profile.DovecotQuota()),
 		)
 	}
 

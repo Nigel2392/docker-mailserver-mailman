@@ -1,0 +1,24 @@
+{{ template "skeleton" . }}
+
+{{ define "title" }}{{ T "Email List" }}{{ end }}
+
+{{ define "css" }}
+    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
+{{ end }}
+
+{{ define "content" }}
+    <div class="mailmgmt-list" data-controller="table-list">
+        {{ include . "" "mailmgmt/partials/list_form.tmpl" "mailmgmt/partials/domain_list_form.tmpl" }}
+
+        <div class="mailmgmt-list-table-wrapper">
+            {{ $list := (.Get "view_list") }}
+            {{ safe $list.Render }}
+        </div>
+
+        <div class="mailmgmt-paginator-container">
+            <div id="mailmgmt-paginator" class="mailmgmt-list-paginator"></div>
+        </div>
+
+    </div>
+{{ end }}
+

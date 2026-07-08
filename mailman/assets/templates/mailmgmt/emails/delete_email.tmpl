@@ -7,14 +7,27 @@
 {{ end }}
 
 {{ define "content" }}
+    {{ $obj := (.Get "view.object") }}
     <div class="mailmgmt-object">
 
         <div class="mailmgmt-header">
-            {{ T "Delete E-Mail Data: %s" (.Get "view.object").Email }}
+            {{ T "Delete E-Mail: %s" $obj.User.Email }}
         </div>
 
         <div class="mailmgmt-content">
+            {{ if gt (len .Data.aliasses) 0 }}
+                <h3 class="color-standout">{{ T "Aliasses:" }}</h3>
+            <ul>{{ range $alias := .Data.aliasses }}
+                <li>{{ $alias.Object.Source.Address }}</li>
+            {{ end }}</ul>
+            {{ end }}
 
+            <form method="POST">
+                {{ csrf_field }}
+                <button class="btn btn-danger btn-standalone m-0" name="confirm" value="true">
+                    {{ T "Delete" }}
+                </button>
+            </form>
         </div>
 
     </div>
