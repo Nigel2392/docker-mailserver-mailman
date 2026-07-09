@@ -16,8 +16,4 @@ This package is intended to do the following, some of it yet to be implemented:
 * Allow to connect different distributed databases to the LDAP backend
 * Managing Dovecot sieve scripts
 
-I'll be really honest here -- **you probably shouldn't expose the LDAP ports to the public net.**
-
-LDAP is a new protocol for me; or, well it's internals are.
-
-I might get confident enough in the future after heavy testing to remove this warning. **Today is not that day.**
+**WARNING:** LDAP is not supposed to be exposed to the public internet. Use IP restrictions if you must.
