@@ -407,12 +407,31 @@ table.list .column-group:hover {
     border-radius: 50%;
     color: rgba(var(--color-primary-rgb), 0.8);
     text-decoration: none;
-    border: 1px solid var(--color-standout);
-    box-shadow: 6px 6px 6px rgba(var(--color-primary-rgb),0.3);
-    transition: all 0.1s ease-in-out;
+    border: 2px dotted rgba(var(--color-primary-rgb),0.3);
 }
-.mailmgmt-index-card:hover {
-    box-shadow: 3px 3px 3px rgba(var(--color-primary-rgb),0.3);
+.mailmgmt-index-card .mailmgmt-index-card-title,
+.mailmgmt-index-card .index-card-icon {
+    transition: all 0.2s ease-in-out;
+}
+.mailmgmt-index-card:hover .mailmgmt-index-card-title,
+.mailmgmt-index-card:hover .index-card-icon {
+    color: rgba(var(--color-standout-rgb), 0.9);
+}
+.mailmgmt-index-card .mailmgmt-index-card-display::after {
+    content: "";
+    width: 5%;
+    height: .5rem;
+    position: absolute;
+    bottom: .5rem;
+    opacity: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(var(--color-standout-rgb), 0.9);
+    transition: all 0.2s ease-in-out;
+}
+.mailmgmt-index-card:hover .mailmgmt-index-card-display::after {
+    opacity: 1;
+    width: 100%;
 }
 .mailmgmt-index-card-display-container .icon {
     margin-bottom: -3rem;
@@ -427,6 +446,7 @@ table.list .column-group:hover {
 }
 .mailmgmt-index-card-display {
     font-size: 8rem;
+    position: relative;
 }
 .icon.index-icon {
     width: 10rem;
