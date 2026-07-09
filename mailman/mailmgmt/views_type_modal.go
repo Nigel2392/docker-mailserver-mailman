@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 
-	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/core/assert"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
@@ -42,6 +41,7 @@ type baseView[BOUND any] interface {
 type GenericBoundModalView[_BOUND any, VIEW baseView[_BOUND]] struct {
 	Embedder _BOUND
 	View     VIEW
+	action   string
 }
 
 func (l *GenericBoundModalView[_BOUND, VIEW]) ServeXXX(w http.ResponseWriter, req *http.Request) {}
@@ -54,6 +54,10 @@ func (l *GenericBoundModalView[_BOUND, VIEW]) Render(w http.ResponseWriter, req 
 		writer     = new(bytes.Buffer)
 		uuid       = uuid.New().String()
 	)
+
+	if l.action == "" {
+		l.action = "close"
+	}
 
 	context.Set("view.modal", l)
 	context.Set("view.modal.id", fmt.Sprintf(
@@ -78,11 +82,11 @@ func (l *GenericBoundModalView[_BOUND, VIEW]) Render(w http.ResponseWriter, req 
 	}
 
 	fmt.Fprintf(w, `<div id="modal-%s" data-controller="form-modal">
-    	<div class="modal-underlay" data-form-modal-target="underlay" data-action="click->form-modal#close"></div>
+    	<div class="modal-underlay" data-form-modal-target="underlay" data-action="click->form-modal#%s"></div>
     	<div class="modal-container" data-form-modal-target="modal">
     		%s
     		<div class="modal-content">%s</div>
-    		<button class="button modal-close-button" data-action="click->form-modal#close">
+    		<button class="button modal-close-button" data-action="click->form-modal#%s">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mailmgmt-action-icon bg-danger" viewBox="0 0 16 16">
 				  	<path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
 				</svg>
@@ -90,9 +94,10 @@ func (l *GenericBoundModalView[_BOUND, VIEW]) Render(w http.ResponseWriter, req 
     	</div>
     </div>`,
 		uuid,
+		l.action,
 		modalTitle,
 		writer.String(),
-		// trans.T(req.Context(), "Close"),
+		l.action,
 	)
 
 	return nil
@@ -107,6 +112,7 @@ type BoundFormModalView[FORM forms.Form] struct {
 	Data    map[string]interface{}
 	Context ctx.Context
 	Form    FORM
+	valid   bool
 }
 
 func (l *BoundFormModalView[FORM]) Setup(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
@@ -134,7 +140,6 @@ func (l *BoundFormModalView[FORM]) Setup(w http.ResponseWriter, r *http.Request)
 func (l *BoundFormModalView[FORM]) GetContext(req *http.Request) (c ctx.Context, err error) {
 	var ctx = ctx.RequestContext(req)
 
-	var valid bool
 	if req.Method == http.MethodPost {
 
 		l.Form = forms.Initialize(l.Form,
@@ -142,11 +147,11 @@ func (l *BoundFormModalView[FORM]) GetContext(req *http.Request) (c ctx.Context,
 		)
 
 		if !forms.IsValid(req.Context(), l.Form) {
-			valid = false
+			l.valid = false
 			goto setupCtx
 		}
 
-		l.Form, valid, err = l.View.IsValid(l, req, l.Form)
+		l.Form, l.valid, err = l.View.IsValid(l, req, l.Form)
 		if err != nil {
 			return c, err
 		}
@@ -154,17 +159,11 @@ func (l *BoundFormModalView[FORM]) GetContext(req *http.Request) (c ctx.Context,
 
 setupCtx:
 	ctx.Set("form", l.Form)
-	ctx.Set("valid", valid)
+	ctx.Set("valid", l.valid)
 	ctx.Set("success_text", trans.GetTextFunc(l.View.SuccessText)(req.Context()))
-	switch v := l.View.SubmitURL.(type) {
-	case func(*BoundFormModalView[FORM], *http.Request) string:
-		ctx.Set("submit_url", v(l, req))
-	case func(*http.Request) string:
-		ctx.Set("submit_url", v(req))
-	case string:
-		ctx.Set("submit_url", django.Reverse(v))
-	default:
-		assert.Fail("submit url not provided for BoundFormModalView")
+
+	if l.valid && req.URL.Query().Get("refresh") == "true" {
+		l.action = "refresh"
 	}
 
 	l.Context = ctx
@@ -239,7 +238,6 @@ type ModalView struct {
 
 type ModalFormView[FORM forms.Form] struct {
 	GenericModalView[*BoundFormModalView[FORM]]
-	SubmitURL   any // string | func(*http.Request) string | func(view, *http.Request) string
 	SuccessText any // trans.GetText
 	GetForm     func(v *BoundFormModalView[FORM], r *http.Request) (FORM, error)
 	IsValid     func(*BoundFormModalView[FORM], *http.Request, FORM) (f FORM, valid bool, err error)

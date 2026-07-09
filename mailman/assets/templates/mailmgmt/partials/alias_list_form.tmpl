@@ -4,7 +4,7 @@
 
 {{ define "pre_actions" }}
     <button type="button" class="mailmgmt-list-toolbar-button labeled-action"
-        hx-get="{{ url "mailmgmt:htmx:aliasses:add" }}"
+        hx-get="{{ url "mailmgmt:htmx:aliasses:add" }}?refresh=true"
         hx-target="body"
         hx-swap="beforeend">
 

@@ -106,14 +106,11 @@ var ViewAliasses = &list.View[*MailAlias]{
 
 var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 	GenericModalView: GenericModalView[*BoundFormModalView[forms.Form]]{
-		Template:       "mailmgmt/emails/modal_form.tmpl",
+		Template:       "mailmgmt/base/modal_form.tmpl",
 		Title:          trans.S("Add a new E-mail alias"),
 		AllowedMethods: []string{"GET", "POST"},
 	},
 	SuccessText: trans.S("Alias created successfully."),
-	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
-		return django.Reverse("mailmgmt:htmx:aliasses:add")
-	},
 	GetForm: func(v *BoundFormModalView[forms.Form], r *http.Request) (forms.Form, error) {
 		var form = forms.NewBaseForm(r.Context())
 		form.AddField("alias", fields.EmailField(
@@ -162,14 +159,11 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 
 var ViewAddAliasToUserHtmx = &ModalFormView[forms.Form]{
 	GenericModalView: GenericModalView[*BoundFormModalView[forms.Form]]{
-		Template:       "mailmgmt/emails/modal_form.tmpl",
+		Template:       "mailmgmt/base/modal_form.tmpl",
 		Title:          trans.S("Add a new E-mail alias"),
 		AllowedMethods: []string{"GET", "POST"},
 	},
 	SuccessText: trans.S("Alias created successfully."),
-	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
-		return django.Reverse("mailmgmt:htmx:aliasses:add_user", mux.Vars(r).Get("email_id"))
-	},
 	GetForm: func(v *BoundFormModalView[forms.Form], r *http.Request) (forms.Form, error) {
 		var userId = mux.Vars(r).GetInt("email_id")
 		except.Assert(
@@ -255,7 +249,8 @@ var ViewDeleteAlias = &DeleteView[*MailAlias]{
 		return row.Object, err
 	},
 	Delete: func(bdv *BoundDeleteView[*MailAlias], r *http.Request, la *MailAlias) (err error) {
-		la.IsActive = false
-		return la.Update(r.Context())
+		return la.Delete(r.Context())
+		//la.IsActive = false
+		//return la.Update(r.Context())
 	},
 }

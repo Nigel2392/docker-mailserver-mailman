@@ -45,6 +45,10 @@ type MailAlias struct {
 	IsActive    bool                                        `json:"is_active"`
 }
 
+func (n *MailAlias) String() string {
+	return n.Source.Address
+}
+
 func (u *MailAlias) Fields() []any {
 	return []any{
 		attrs.Unbound("ID", &attrs.FieldConfig{

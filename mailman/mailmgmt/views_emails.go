@@ -211,11 +211,10 @@ var _, _ = auth.SignalPreValidateLogonField.Listen(func(s signals.Signal[*auth.F
 
 var ViewAddEmailHtmx = &ModalFormView[*auth.BaseUserForm]{
 	GenericModalView: GenericModalView[*BoundFormModalView[*auth.BaseUserForm]]{
-		Template:       "mailmgmt/emails/modal_form.tmpl",
+		Template:       "mailmgmt/base/modal_form.tmpl",
 		Title:          trans.S("Add a new E-mail adress"),
 		AllowedMethods: []string{"GET", "POST"},
 	},
-	SubmitURL:   "mailmgmt:htmx:emails:add",
 	SuccessText: trans.S("Email created successfully."),
 	GetForm: func(v *BoundFormModalView[*auth.BaseUserForm], r *http.Request) (*auth.BaseUserForm, error) {
 		var opts = auth.RegisterFormConfig{AskForNames: true, AlwaysAllLoginFields: true}
@@ -239,17 +238,11 @@ var ViewAddEmailHtmx = &ModalFormView[*auth.BaseUserForm]{
 
 var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 	GenericModalView: GenericModalView[*BoundFormModalView[forms.Form]]{
-		Template:       "mailmgmt/emails/modal_form.tmpl",
+		Template:       "mailmgmt/base/modal_form.tmpl",
 		Title:          trans.S("Update E-mail password"),
 		AllowedMethods: []string{"GET", "POST"},
 	},
 	SuccessText: trans.S("Email password updated successfully."),
-	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
-		return fmt.Sprintf("%s?email=%s",
-			django.Reverse("mailmgmt:htmx:emails:update"),
-			r.URL.Query().Get("email"),
-		)
-	},
 	GetForm: func(v *BoundFormModalView[forms.Form], r *http.Request) (forms.Form, error) {
 		var form = forms.NewBaseForm(
 			r.Context(), forms.WithFields(

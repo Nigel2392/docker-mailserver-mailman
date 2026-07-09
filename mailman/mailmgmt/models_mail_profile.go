@@ -18,6 +18,13 @@ type UserMailProfile struct {
 	Bytes   uint
 }
 
+func (n *UserMailProfile) String() string {
+	if n.User.Email == nil {
+		return fmt.Sprintf("MailAlias[%d]", n.User.ID)
+	}
+	return n.User.Email.Address
+}
+
 // FormattedBytes returns a human-readable string for your frontend UI.
 func (u *UserMailProfile) FormattedBytes() string {
 	if u.Bytes == 0 {

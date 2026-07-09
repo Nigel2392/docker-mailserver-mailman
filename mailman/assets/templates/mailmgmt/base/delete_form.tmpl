@@ -23,7 +23,24 @@
 
             {{ block "view" . }}{{ end }}
 
-            {{ include . "" "mailmgmt/partials/form_delete.tmpl" }}
+            <form method="POST">
+                {{ csrf_field }}
+            
+                <div class="form-group mailmgmt-delete-confirm">
+                    <label for="confirm_id" class="form-label">{{ T "Confirm" }}</label>
+                    <input type="text" name="confirm" id="confirm_id" class="form-control"/>
+                    <div class="form-help">
+                        {{ T "Please write %q in the above textbox to delete this object." (.Get "view.confirm") }}
+                    </div>
+                </div>
+            
+                <button class="btn btn-danger btn-standalone m-0">
+                    {{ T "Delete" }}
+                </button>
+
+                <a href="{{.Data.NextURL}}" class="btn btn-standout btn-standalone m-0">{{ T "Back" }}</a>
+            </form>
+
         </div>
 
     </div>

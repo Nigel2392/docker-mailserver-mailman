@@ -5,7 +5,7 @@
         </section>
     {{ else }}
 
-    <form action="{{ .Get "submit_url" }}" method="post" autocomplete="off" data-form-modal-target="form" hx-post="{{ .Get "submit_url" }}" hx-trigger="submit" hx-target="#{{ .Get "view.modal.id" }}" hx-swap="outerHTML">
+    <form action="{{ .Request.URL.String }}" method="post" autocomplete="off" data-form-modal-target="form" hx-post="{{ .Request.URL.String }}" hx-trigger="submit" hx-target="#{{ .Get "view.modal.id" }}" hx-swap="outerHTML">
         {{ csrf_field }}
 
         {{ $errors := .Data.form.ErrorList }}

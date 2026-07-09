@@ -5,12 +5,13 @@ import (
 	"io"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
 	django "github.com/Nigel2392/go-django/src"
+	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/core/assert"
+	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/contenttypes"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
@@ -70,6 +71,8 @@ func (l *BoundDeleteView[T]) GetContext(req *http.Request) (c ctx.Context, err e
 		ctx.Set("view.object.label", label)
 	}
 
+	ctx.Set("view.confirm", attrs.ToString(l.Object))
+
 	l.Context = ctx
 	if l.View.GetContext != nil {
 		c, err = l.View.GetContext(l, ctx)
@@ -104,13 +107,10 @@ func (l *BoundDeleteView[T]) Render(w http.ResponseWriter, req *http.Request, co
 			return err
 		}
 
-		del, err := strconv.ParseBool(req.PostForm.Get("confirm"))
-		if err != nil {
-			return err
-		}
-
-		if !del {
-			http.Redirect(w, req, next, http.StatusFound)
+		del := req.PostForm.Get("confirm")
+		if del != attrs.ToString(l.Object) {
+			messages.Error(req, "Please type the confirmation correctly.")
+			http.Redirect(w, req, req.URL.String(), http.StatusFound)
 			return nil
 		}
 

@@ -19,4 +19,8 @@ export default class extends Controller {
     close() {
         this.element.remove()
     }
+
+    refresh() {
+        window.location.reload()
+    }
 }
