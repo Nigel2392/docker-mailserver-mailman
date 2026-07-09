@@ -5,9 +5,9 @@ go 1.26.3
 require (
 	github.com/Nigel2392/cache v1.0.4
 	github.com/Nigel2392/errors v1.0.0
-	github.com/Nigel2392/go-django v1.7.4
-	github.com/Nigel2392/go-django/djester v1.7.4
-	github.com/Nigel2392/go-django/queries v1.7.4
+	github.com/Nigel2392/go-django v1.7.5-0.20260709203533-0bc2be3ed347
+	github.com/Nigel2392/go-django/djester v1.7.5-0.20260709203533-0bc2be3ed347
+	github.com/Nigel2392/go-django/queries v1.7.5-0.20260709203533-0bc2be3ed347
 	github.com/Nigel2392/go-signals v1.1.1
 	github.com/Nigel2392/goldcrest v1.0.4
 	github.com/Nigel2392/mux v1.6.1-0.20251030144343-070717da1ff8

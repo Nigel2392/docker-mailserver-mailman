@@ -11,10 +11,16 @@ github.com/Nigel2392/errors v1.0.0 h1:/mtDxh9jTvrj0kZQiTsDPtgUG6Da1R5gSp/FFfo00C
 github.com/Nigel2392/errors v1.0.0/go.mod h1:AV6mIkaeDgEi9vJKMpG9/6ni4fRnSnrqcfXWwjKbGHE=
 github.com/Nigel2392/go-django v1.7.4 h1:3ZIxCDGfAfKSEGn8wMOPUxftXC/5kKduhDJ3I0lBtdM=
 github.com/Nigel2392/go-django v1.7.4/go.mod h1:3HBR65JCtGGhrDu50mFBRjudLp0kWKNdWUBz6nz4DX4=
+github.com/Nigel2392/go-django v1.7.5-0.20260709203533-0bc2be3ed347 h1:XfgclrvI6Ohfuhsfivi+w7Zlqb48I7FQxXve4qHCE7A=
+github.com/Nigel2392/go-django v1.7.5-0.20260709203533-0bc2be3ed347/go.mod h1:3HBR65JCtGGhrDu50mFBRjudLp0kWKNdWUBz6nz4DX4=
 github.com/Nigel2392/go-django/djester v1.7.4 h1:+F4LQOdh4pFpbukCkYcw89rtWbjQk/z2289gWzRTuHw=
 github.com/Nigel2392/go-django/djester v1.7.4/go.mod h1:H7kSWKUVz7gGH318K/+xaO5zXQ+QB/XgDodE/fG0d0U=
+github.com/Nigel2392/go-django/djester v1.7.5-0.20260709203533-0bc2be3ed347 h1:xx3npXmPUI0Oteyy9BxPuWAJLoioDrbFDkN2ciNVFmo=
+github.com/Nigel2392/go-django/djester v1.7.5-0.20260709203533-0bc2be3ed347/go.mod h1:dO+rePaMC9efu5lxIZM+Q6g9EGx8cx0GVv0OP/B85Ws=
 github.com/Nigel2392/go-django/queries v1.7.4 h1:TWp/6xAKmOezZK4q3SgI/pBfHWbrbE+dTdx9Onir1D4=
 github.com/Nigel2392/go-django/queries v1.7.4/go.mod h1:C89g1Hn1e3pPP6MmyF7jx1gMa9eS7F6EVV2/hbU+xN0=
+github.com/Nigel2392/go-django/queries v1.7.5-0.20260709203533-0bc2be3ed347 h1:gesd5MtPmG99nsD7VdSp73f4o0ljNqY6pJZFNM9fTtg=
+github.com/Nigel2392/go-django/queries v1.7.5-0.20260709203533-0bc2be3ed347/go.mod h1:C89g1Hn1e3pPP6MmyF7jx1gMa9eS7F6EVV2/hbU+xN0=
 github.com/Nigel2392/go-signals v1.1.1 h1:B89hgVfJxk6KMigSPKVyUCBIkwBN50w27DoSoJ2rHPs=
 github.com/Nigel2392/go-signals v1.1.1/go.mod h1:Olk7MJlZ9gdGPN8bh+OZSe7iOsBixn7biVI7LqoWEIA=
 github.com/Nigel2392/go-telepath v1.4.3 h1:NHdppY3lJgcnTPBwNQuh8OQ7HMnH3sMHdU3WON81pJA=
