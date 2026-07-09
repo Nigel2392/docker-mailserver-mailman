@@ -10,7 +10,7 @@ import (
 )
 
 type UserMailProfile struct {
-	models.Model `table:"mail_quota" json:"-"`
+	models.Model `table:"mail_quota" label:"User" json:"-"`
 
 	ID      uint64
 	Deleted bool // is the user deleted?

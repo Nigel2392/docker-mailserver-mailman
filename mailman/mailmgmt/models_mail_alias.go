@@ -37,7 +37,7 @@ func (m *MailAliasUser) UniqueTogether() [][]string {
 
 // MailAlias represents an email forwarding rule in the database
 type MailAlias struct {
-	models.Model `table:"mail_aliases" json:"-"`
+	models.Model `table:"mail_aliases" label:"Alias" json:"-"`
 
 	ID          uint64                                      `json:"id" attrs:"primary;readonly"`
 	Source      *drivers.Email                              `json:"source"` // e.g. "info@example.com"

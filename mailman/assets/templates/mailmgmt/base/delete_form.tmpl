@@ -1,0 +1,30 @@
+{{ template "skeleton" . }}
+
+{{ define "title" }}{{ T "Delete %s" (.Get "view.object.label") }}{{ end }}
+
+{{ define "css" }}
+    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
+{{ end }}
+
+{{ define "content" }}
+    <div class="mailmgmt-object">
+
+        <div class="mailmgmt-header">
+            {{ block "header" . }}{{ end }}
+        </div>
+
+        <div class="alert-container alert alert-danger">
+            <h3>{{ T "Careful!" }}</h3>
+            <p>{{ T "Are you sure you want to delete this %s?" (.Get "view.object.label") }}</p>
+            <p>{{ T "This action cannot be undone." }}</p>
+        </div>
+    
+        <div class="mailmgmt-content">
+
+            {{ block "view" . }}{{ end }}
+
+            {{ include . "" "mailmgmt/partials/form_delete.tmpl" }}
+        </div>
+
+    </div>
+{{ end }}

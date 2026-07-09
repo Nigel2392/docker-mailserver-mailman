@@ -15,7 +15,7 @@ import (
 //		Filter("Domain__iexact", domain)
 
 type Domain struct {
-	models.Model `table:"domains"`
+	models.Model `table:"domains" label:"Domain"`
 	ID           int64
 	Name         string
 	Domain       string
@@ -23,6 +23,10 @@ type Domain struct {
 
 func (n *Domain) FieldDefs() attrs.Definitions {
 	return n.Model.Define(n, n.Fields)
+}
+
+func (n *Domain) String() string {
+	return n.Domain
 }
 
 func (n *Domain) DatabaseIndexes(obj attrs.Definer) []migrator.Index {

@@ -1,19 +1,20 @@
 package mailmgmt
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/mail"
-	"net/url"
 	"strconv"
-	"strings"
 
 	queries "github.com/Nigel2392/go-django/queries/src"
-	"github.com/Nigel2392/go-django/queries/src/drivers"
+	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
+	"github.com/Nigel2392/go-django/queries/src/fields/formfields"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
+	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
+	"github.com/Nigel2392/go-django/src/core/assert"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
@@ -21,8 +22,11 @@ import (
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/forms/fields"
 	"github.com/Nigel2392/go-django/src/forms/widgets"
+	"github.com/Nigel2392/go-django/src/forms/widgets/chooser"
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/Nigel2392/go-django/src/views/list"
+	"github.com/Nigel2392/go-signals"
+	"github.com/Nigel2392/mux"
 )
 
 var ViewEmails = &list.View[*auth.User]{
@@ -80,6 +84,9 @@ var ViewEmails = &list.View[*auth.User]{
 		list.FuncColumn(
 			trans.S("Name"),
 			func(r *http.Request, defs attrs.Definitions, row *auth.User) interface{} {
+				if row.FirstName == "" && row.LastName == "" {
+					return "---"
+				}
 				return fmt.Sprintf("%s %s", row.FirstName, row.LastName)
 			},
 		),
@@ -105,7 +112,7 @@ var ViewEmails = &list.View[*auth.User]{
 		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *auth.User) template.HTML {
 			var html = `<div class="mailmgmt-list-item-actions">
                 <button class="mailmgmt-action-button mailmgmt-action-alias"
-                    hx-get="%s?email=%s"
+                    hx-get="%s"
                     hx-target="body"
                     hx-swap="beforeend">
 
@@ -115,7 +122,7 @@ var ViewEmails = &list.View[*auth.User]{
                     </svg>
                 </button>
                 <button class="mailmgmt-action-button mailmgmt-action-change"
-                    hx-get="%s?email=%s"
+                    hx-get="%s"
                     hx-target="body"
                     hx-swap="beforeend">
 
@@ -124,22 +131,83 @@ var ViewEmails = &list.View[*auth.User]{
                         <path d="M9.5 6.5a1.5 1.5 0 0 1-1 1.415l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99a1.5 1.5 0 1 1 2-1.415"/>
                     </svg>
                 </button>
-                <a href="%s?email=%s" class="mailmgmt-action-button mailmgmt-action-delete">
+                <a href="%s" class="mailmgmt-action-button mailmgmt-action-delete">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mailmgmt-action-icon" viewBox="0 0 16 16" data-controller="tooltip" data-tooltip-content-value="%s" data-tooltip-placement-value="bottom">
                         <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
                     </svg>
                 </a>
             </div>`
 
-			var eml = url.QueryEscape(row.Email.Address)
 			return template.HTML(fmt.Sprintf(html,
-				django.Reverse("mailmgmt:htmx:aliasses:add"), eml, trans.T(r.Context(), "Add new alias"),
-				django.Reverse("mailmgmt:htmx:emails:update"), eml, trans.T(r.Context(), "Change Password"),
-				django.Reverse("mailmgmt:emails:delete"), eml, trans.T(r.Context(), "Delete"),
+				django.Reverse("mailmgmt:htmx:aliasses:add_user", row.ID), trans.T(r.Context(), "Add new alias"),
+				django.Reverse("mailmgmt:htmx:emails:update", row.ID), trans.T(r.Context(), "Change Password"),
+				django.Reverse("mailmgmt:emails:delete", row.ID), trans.T(r.Context(), "Delete"),
 			))
 		}),
 	},
 }
+
+type UsernameWidget struct {
+	*widgets.MultiWidget
+}
+
+func NewEmailDomainWidget(attrs map[string]string) *UsernameWidget {
+	var w = widgets.NewMultiWidget(attrs)
+	w.AddWidget("username", widgets.NewTextInput(nil))
+	w.AddWidget("domain", formfields.ModelSelectWidget(
+		false, "--------",
+		chooser.BaseChooserOptions{
+			TargetObject: &Domain{},
+			GetPrimaryKey: func(_ context.Context, i interface{}) interface{} {
+				var def, ok = i.(*Domain)
+				if !ok {
+					assert.Fail("object %T is not a Definer", i)
+				}
+				return def.ID
+			},
+		},
+		nil,
+	))
+	return &UsernameWidget{
+		MultiWidget: w,
+	}
+}
+
+var _, _ = auth.SignalPreValidateLogonField.Listen(func(s signals.Signal[*auth.FormSignal], fs *auth.FormSignal) error {
+	var emailDomain, ok = fs.CleanedData["emailDomain"].(map[string]interface{})
+	if !ok {
+		return errs.NewValidationError("emailDomain", errs.ErrFieldRequired)
+	}
+
+	domainValue, ok := emailDomain["domain"]
+	if !ok {
+		return errs.NewValidationError("emailDomain", errs.ErrFieldRequired)
+	}
+	usernameValue, ok := emailDomain["username"]
+	if !ok {
+		return errs.NewValidationError("emailDomain", errs.ErrFieldRequired)
+	}
+
+	domainRow, err := queries.
+		GetQuerySet(&Domain{}).
+		Filter("ID", domainValue).
+		Get()
+	if err != nil {
+		return errs.NewValidationError("emailDomain", err)
+	}
+
+	emailValue, err := mail.ParseAddress(fmt.Sprintf(
+		"%s@%s", usernameValue, domainRow.Object.Domain,
+	))
+	if err != nil {
+		return errs.NewValidationError("emailDomain", err)
+	}
+
+	fs.CleanedData["username"] = emailValue.Address
+	fs.CleanedData["email"] = emailValue
+
+	return nil
+})
 
 var ViewAddEmailHtmx = &ModalFormView[*auth.BaseUserForm]{
 	GenericModalView: GenericModalView[*BoundFormModalView[*auth.BaseUserForm]]{
@@ -149,15 +217,21 @@ var ViewAddEmailHtmx = &ModalFormView[*auth.BaseUserForm]{
 	},
 	SubmitURL:   "mailmgmt:htmx:emails:add",
 	SuccessText: trans.S("Email created successfully."),
-	GetForm: func(r *http.Request) (*auth.BaseUserForm, error) {
-		var opts = auth.RegisterFormConfig{AskForNames: true}
-		return auth.UserRegisterForm(r, opts), nil
+	GetForm: func(v *BoundFormModalView[*auth.BaseUserForm], r *http.Request) (*auth.BaseUserForm, error) {
+		var opts = auth.RegisterFormConfig{AskForNames: true, AlwaysAllLoginFields: true}
+		var f = auth.UserRegisterForm(r, opts)
+		f.DeleteField("email")
+		f.DeleteField("username")
+		f.AddField("emailDomain", fields.NewField(
+			fields.Label(trans.S("Email")),
+			fields.HelpText(trans.S("Enter your desired email address before the @ sign.")),
+		))
+		f.AddWidget("emailDomain", NewEmailDomainWidget(nil))
+		f.Ordering([]string{"emailDomain"})
+		return f, nil
+
 	},
-	IsValid: func(r *http.Request, f *auth.BaseUserForm) (*auth.BaseUserForm, bool, error) {
-		eml := f.Cleaned["email"].(*drivers.Email)
-		emlName := strings.SplitN(eml.Address, "@", 1)
-		f.Instance = &auth.User{}
-		f.Instance.Username = emlName[0]
+	IsValid: func(v *BoundFormModalView[*auth.BaseUserForm], r *http.Request, f *auth.BaseUserForm) (*auth.BaseUserForm, bool, error) {
 		_, err := f.Save()
 		return f, true, err
 	},
@@ -165,7 +239,7 @@ var ViewAddEmailHtmx = &ModalFormView[*auth.BaseUserForm]{
 
 var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 	GenericModalView: GenericModalView[*BoundFormModalView[forms.Form]]{
-		Template:       "mailmgmt/emails/modal_list.tmpl",
+		Template:       "mailmgmt/emails/modal_form.tmpl",
 		Title:          trans.S("Update E-mail password"),
 		AllowedMethods: []string{"GET", "POST"},
 	},
@@ -176,7 +250,7 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 			r.URL.Query().Get("email"),
 		)
 	},
-	GetForm: func(r *http.Request) (forms.Form, error) {
+	GetForm: func(v *BoundFormModalView[forms.Form], r *http.Request) (forms.Form, error) {
 		var form = forms.NewBaseForm(
 			r.Context(), forms.WithFields(
 				fields.EmailField(
@@ -219,7 +293,10 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 			var pwd2, ok2 = m["password_confirm"]
 			if !ok1 || !ok2 || pwd1 != pwd2 {
 				return []error{
-					errors.New(trans.T(r.Context(), "Password does not match confirmation.")),
+					errors.Wrap(
+						autherrors.ErrPasswordInvalid,
+						trans.T(r.Context(), "Password does not match confirmation."),
+					),
 				}
 			}
 			return nil
@@ -255,15 +332,10 @@ var ViewDeleteEmail = &DeleteView[*UserMailProfile]{
 	Template: "mailmgmt/emails/delete_email.tmpl",
 	NextURL:  "mailmgmt:emails",
 	GetObject: func(bdv *BoundDeleteView[*UserMailProfile], r *http.Request) (*UserMailProfile, error) {
-		var eml, err = mail.ParseAddress(r.URL.Query().Get("email"))
-		if err != nil {
-			return nil, errs.ErrInvalidSyntax
-		}
-
 		row, err := queries.GetQuerySet(&UserMailProfile{}).
 			WithContext(r.Context()).
 			Select("*", "User.*").
-			Filter("User.Email__iexact", eml.Address).
+			Filter("User.ID", mux.Vars(r).Get("email_id")).
 			Get()
 
 		return row.Object, err

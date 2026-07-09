@@ -123,7 +123,17 @@ table.list {
     width: 100%;
     table-layout: fixed;
 }
-table.list th:first-child input[type="checkbox"] {
+table.list .list-checkbox-wrapper {
+    gap: 0.5rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+table.list .list-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+table .list-checkbox-wrapper input[type="checkbox"] {
     width: 1.2rem;
     height: 1.2rem;
 }
@@ -139,11 +149,18 @@ table.list td {
 }
 table.list th:nth-child(1),
 table.list td:nth-child(1) {
-    text-align: center;
-    width: 3rem;
+    padding-inline-start: 0.3rem;
+    text-wrap: nowrap;
+    text-align: left;
+    vertical-align: middle;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: inherit;
+    width: 25%;
 }
 table.list th:nth-child(2),
 table.list td:nth-child(2) {
+    text-align: left;
     width: 25%;
 }
 
@@ -407,6 +424,15 @@ div[id^="modal-"] {
 	animation-name: fadeIn;
 	animation-duration:150ms;
 	animation-timing-function: ease;
+}
+
+div[id^="modal-"] .multi-widget {
+    display: flex;
+    flex-direction: row;
+}
+
+div[id^="modal-"] .multi-widget .multi-widget-field:nth-child(1)::after {
+    content: "@"
 }
 
 div[id^="modal-"] > .modal-underlay {

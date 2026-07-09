@@ -5,22 +5,23 @@ import (
 	"html/template"
 	"net/http"
 	"net/mail"
-	"net/url"
 	"strconv"
 
 	queries "github.com/Nigel2392/go-django/queries/src"
 	"github.com/Nigel2392/go-django/queries/src/drivers"
+	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
 	"github.com/Nigel2392/go-django/queries/src/expr"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
-	"github.com/Nigel2392/go-django/src/core/errs"
+	"github.com/Nigel2392/go-django/src/core/except"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/forms/fields"
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/Nigel2392/go-django/src/views/list"
+	"github.com/Nigel2392/mux"
 )
 
 var ViewAliasses = &list.View[*MailAlias]{
@@ -40,8 +41,8 @@ var ViewAliasses = &list.View[*MailAlias]{
 	QuerySet: func(r *http.Request) *queries.QuerySet[*MailAlias] {
 		return queries.
 			GetQuerySetWithContext(r.Context(), &MailAlias{}).
-			Select("Source", "IsActive").
-			GroupBy("Source").
+			Select("ID", "Source", "IsActive").
+			GroupBy("ID").
 			Annotate("UserCount", expr.COUNT("Destination.ID")). // Count the joined user IDs
 			OrderBy("Source")
 	},
@@ -89,38 +90,15 @@ var ViewAliasses = &list.View[*MailAlias]{
 		),
 		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *MailAlias) template.HTML {
 			var html = `<div class="mailmgmt-list-item-actions">
-                <button class="mailmgmt-action-button mailmgmt-action-alias"
-                    hx-get="%s?email=%s"
-                    hx-target="body"
-                    hx-swap="beforeend">
-
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mailmgmt-action-icon" viewBox="0 0 16 16" data-controller="tooltip" data-tooltip-content-value="%s" data-tooltip-placement-value="bottom">
-                        <path d="M2 2a2 2 0 0 0-2 2v8.01A2 2 0 0 0 2 14h5.5a.5.5 0 0 0 0-1H2a1 1 0 0 1-.966-.741l5.64-3.471L8 9.583l7-4.2V8.5a.5.5 0 0 0 1 0V4a2 2 0 0 0-2-2zm3.708 6.208L1 11.105V5.383zM1 4.217V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v.217l-7 4.2z"/>
-                        <path d="M16 12.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0m-3.5-2a.5.5 0 0 0-.5.5v1h-1a.5.5 0 0 0 0 1h1v1a.5.5 0 0 0 1 0v-1h1a.5.5 0 0 0 0-1h-1v-1a.5.5 0 0 0-.5-.5"/>
-                    </svg>
-                </button>
-                <button class="mailmgmt-action-button mailmgmt-action-change"
-                    hx-get="%s?email=%s"
-                    hx-target="body"
-                    hx-swap="beforeend">
-
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mailmgmt-action-icon" viewBox="0 0 16 16" data-controller="tooltip" data-tooltip-content-value="%s" data-tooltip-placement-value="bottom">
-                        <path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/>
-                        <path d="M9.5 6.5a1.5 1.5 0 0 1-1 1.415l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99a1.5 1.5 0 1 1 2-1.415"/>
-                    </svg>
-                </button>
-                <a href="%s?email=%s" class="mailmgmt-action-button mailmgmt-action-delete">
+                <a href="%s" class="mailmgmt-action-button mailmgmt-action-delete">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mailmgmt-action-icon" viewBox="0 0 16 16" data-controller="tooltip" data-tooltip-content-value="%s" data-tooltip-placement-value="bottom">
                         <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
                     </svg>
                 </a>
             </div>`
 
-			var eml = url.QueryEscape(row.Source.Address)
 			return template.HTML(fmt.Sprintf(html,
-				django.Reverse("mailmgmt:htmx:aliasses:add"), eml, trans.T(r.Context(), "Add new alias"),
-				django.Reverse("mailmgmt:htmx:emails:update"), eml, trans.T(r.Context(), "Change Password"),
-				django.Reverse("mailmgmt:emails:delete"), eml, trans.T(r.Context(), "Delete"),
+				django.Reverse("mailmgmt:aliasses:delete", row.ID), trans.T(r.Context(), "Delete"),
 			))
 		}),
 	},
@@ -134,50 +112,110 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 	},
 	SuccessText: trans.S("Alias created successfully."),
 	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
-		return fmt.Sprintf("%s?email=%s",
-			django.Reverse("mailmgmt:htmx:aliasses:add"),
-			r.URL.Query().Get("email"),
-		)
+		return django.Reverse("mailmgmt:htmx:aliasses:add")
 	},
-	GetForm: func(r *http.Request) (forms.Form, error) {
-		var form = forms.NewBaseForm(
-			r.Context(), forms.WithFields(
-				fields.EmailField(
-					fields.ReadOnly(true),
-					fields.Default(r.URL.Query().Get("email")),
-					fields.Name("email"),
-					fields.Label(trans.S("Email")),
-					fields.Attributes(map[string]string{
-						"autocomplete": "off",
-						"class":        "form-control accented",
-					}),
-				),
-				fields.EmailField(
-					fields.Required(true),
-					fields.Name("alias"),
-					fields.Label(trans.S("Alias")),
-					fields.Attributes(map[string]string{
-						"autocomplete": "off",
-						"class":        "form-control accented",
-					}),
-				),
-			),
-		)
+	GetForm: func(v *BoundFormModalView[forms.Form], r *http.Request) (forms.Form, error) {
+		var form = forms.NewBaseForm(r.Context())
+		form.AddField("alias", fields.EmailField(
+			fields.Required(true),
+			fields.Name("alias"),
+			fields.Label(trans.S("Alias")),
+			fields.Attributes(map[string]string{
+				"autocomplete": "off",
+				"class":        "form-control accented",
+			}),
+		))
+
 		return form, nil
 	},
-	IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {
-		var email = r.URL.Query().Get("email")
-		if email == "" {
-			return nil, false, errs.ErrFieldRequired
+	IsValid: func(v *BoundFormModalView[forms.Form], r *http.Request, f forms.Form) (forms.Form, bool, error) {
+		var c = f.CleanedData()
+		var ma = &MailAlias{
+			Source:   (*drivers.Email)(c["alias"].(*mail.Address)),
+			IsActive: true,
 		}
 
-		var user, err = queries.
-			GetQuerySetWithContext(r.Context(), &auth.User{}).
-			Filter("Email__iexact", email).
-			Get()
+		exists, err := queries.
+			GetQuerySetWithContext(r.Context(), &MailAlias{}).
+			Filter("Source__iexact", ma.Source.Address).
+			Exists()
 		if err != nil {
 			return nil, false, err
 		}
+
+		if exists {
+			f.AddError("alias", errors.Exists.Wrapf("this alias already exists"))
+			return f, false, nil
+		}
+
+		ma, err = queries.
+			GetQuerySetWithContext(r.Context(), &MailAlias{}).
+			Filter("Source__iexact", ma.Source.Address).
+			Create(ma)
+		if err != nil {
+			return nil, false, err
+		}
+
+		return f, true, nil
+	},
+}
+
+var ViewAddAliasToUserHtmx = &ModalFormView[forms.Form]{
+	GenericModalView: GenericModalView[*BoundFormModalView[forms.Form]]{
+		Template:       "mailmgmt/emails/modal_form.tmpl",
+		Title:          trans.S("Add a new E-mail alias"),
+		AllowedMethods: []string{"GET", "POST"},
+	},
+	SuccessText: trans.S("Alias created successfully."),
+	SubmitURL: func(_ *BoundFormModalView[forms.Form], r *http.Request) string {
+		return django.Reverse("mailmgmt:htmx:aliasses:add_user", mux.Vars(r).Get("email_id"))
+	},
+	GetForm: func(v *BoundFormModalView[forms.Form], r *http.Request) (forms.Form, error) {
+		var userId = mux.Vars(r).GetInt("email_id")
+		except.Assert(
+			userId > 0,
+			http.StatusBadRequest,
+			"invalid user",
+		)
+
+		var user, err = queries.
+			GetQuerySetWithContext(r.Context(), &auth.User{}).
+			Filter("ID", userId).
+			Get()
+		if err != nil {
+			return nil, err
+		}
+
+		v.Data["user"] = user.Object
+
+		var form = forms.NewBaseForm(r.Context())
+		form.AddField("email", fields.EmailField(
+			fields.ReadOnly(true),
+			fields.Default(user.Object.Email.Address),
+			fields.Name("email"),
+			fields.Label(trans.S("Email")),
+			fields.Attributes(map[string]string{
+				"autocomplete": "off",
+				"class":        "form-control accented",
+			}),
+		))
+		form.AddField("alias", fields.EmailField(
+			fields.Required(true),
+			fields.Name("alias"),
+			fields.Label(trans.S("Alias")),
+			fields.Attributes(map[string]string{
+				"autocomplete": "off",
+				"class":        "form-control accented",
+			}),
+		))
+		return form, nil
+	},
+	IsValid: func(v *BoundFormModalView[forms.Form], r *http.Request, f forms.Form) (forms.Form, bool, error) {
+		u, ok := v.Data["user"].(*auth.User)
+		except.Assert(
+			ok, http.StatusInternalServerError,
+			"invalid server state",
+		)
 
 		var c = f.CleanedData()
 		var ma = &MailAlias{
@@ -185,7 +223,7 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 			IsActive: true,
 		}
 
-		ma, _, err = queries.
+		ma, _, err := queries.
 			GetQuerySetWithContext(r.Context(), &MailAlias{}).
 			Filter("Source__iexact", ma.Source.Address).
 			GetOrCreate(ma)
@@ -193,11 +231,31 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 			return nil, false, err
 		}
 
-		_, err = ma.Destination.Objects().AddTarget(user.Object)
+		_, err = ma.Destination.Objects().AddTarget(u)
 		if err != nil {
 			return nil, false, err
 		}
 
 		return f, true, nil
+	},
+}
+
+var ViewDeleteAlias = &DeleteView[*MailAlias]{
+	BaseKey:  "main",
+	Template: "mailmgmt/aliasses/delete_alias.tmpl",
+	NextURL:  "mailmgmt:aliasses",
+	GetObject: func(bdv *BoundDeleteView[*MailAlias], r *http.Request) (*MailAlias, error) {
+		row, err := queries.GetQuerySet(&MailAlias{}).
+			WithContext(r.Context()).
+			Select("*").
+			Preload("Destination").
+			Filter("ID", mux.Vars(r).Get("alias_id")).
+			Get()
+
+		return row.Object, err
+	},
+	Delete: func(bdv *BoundDeleteView[*MailAlias], r *http.Request, la *MailAlias) (err error) {
+		la.IsActive = false
+		return la.Update(r.Context())
 	},
 }

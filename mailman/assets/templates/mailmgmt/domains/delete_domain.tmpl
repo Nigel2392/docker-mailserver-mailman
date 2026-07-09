@@ -1,23 +1,9 @@
-{{ template "skeleton" . }}
+{{ template "delete_form" . }}
 
-{{ define "title" }}{{ T "Email List" }}{{ end }}
-
-{{ define "css" }}
-    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
-{{ end }}
-
-{{ define "content" }}
+{{ define "header" }}
     {{ $obj := (.Get "view.object") }}
-    <div class="mailmgmt-object">
-
-        <div class="mailmgmt-header">
-            {{ T "Delete Domain: %q" $obj.Name }}
-        </div>
-
-        <div class="mailmgmt-content">
-
-        </div>
-
-    </div>
+    {{ T "Delete Domain: %q" $obj.Name }}
 {{ end }}
 
+{{ define "view" }}
+{{ end }}

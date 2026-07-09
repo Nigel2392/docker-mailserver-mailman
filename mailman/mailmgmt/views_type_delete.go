@@ -4,14 +4,18 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/core/assert"
+	"github.com/Nigel2392/go-django/src/core/contenttypes"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
 	"github.com/Nigel2392/go-django/src/core/filesystem/tpl"
+	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/views"
 )
 
@@ -49,6 +53,23 @@ func (l *BoundDeleteView[T]) GetContext(req *http.Request) (c ctx.Context, err e
 		ctx.Set("view.object", obj)
 	}
 
+	var rt = reflect.TypeFor[T]()
+	if rt.Kind() == reflect.Pointer {
+		rt = rt.Elem()
+	}
+	if rt.Kind() == reflect.Struct && rt.NumField() > 0 {
+		var field = rt.Field(0)
+		var label = field.Tag.Get("label")
+		if label == "" {
+			var ctype = contenttypes.DefinitionForObject(rt)
+			label = strings.ToLower(ctype.Label(req.Context()))
+		} else {
+			label = strings.ToLower(trans.T(req.Context(), label))
+		}
+
+		ctx.Set("view.object.label", label)
+	}
+
 	l.Context = ctx
 	if l.View.GetContext != nil {
 		c, err = l.View.GetContext(l, ctx)
@@ -64,6 +85,19 @@ func (l *BoundDeleteView[T]) GetContext(req *http.Request) (c ctx.Context, err e
 }
 
 func (l *BoundDeleteView[T]) Render(w http.ResponseWriter, req *http.Request, context ctx.Context) (err error) {
+	var next string
+	switch v := l.View.NextURL.(type) {
+	case func(*BoundDeleteView[T], *http.Request) string:
+		next = v(l, req)
+	case func(*http.Request) string:
+		next = v(req)
+	case string:
+		next = django.Reverse(v)
+	default:
+		assert.Fail("submit url not provided for BoundFormModalView")
+	}
+
+	context.Set("NextURL", next)
 
 	if req.Method == http.MethodPost {
 		if err := req.ParseForm(); err != nil {
@@ -73,18 +107,6 @@ func (l *BoundDeleteView[T]) Render(w http.ResponseWriter, req *http.Request, co
 		del, err := strconv.ParseBool(req.PostForm.Get("confirm"))
 		if err != nil {
 			return err
-		}
-
-		var next string
-		switch v := l.View.NextURL.(type) {
-		case func(*BoundDeleteView[T], *http.Request) string:
-			next = v(l, req)
-		case func(*http.Request) string:
-			next = v(req)
-		case string:
-			next = django.Reverse(v)
-		default:
-			assert.Fail("submit url not provided for BoundFormModalView")
 		}
 
 		if !del {

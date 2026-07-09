@@ -100,21 +100,24 @@ func NewAppConfig() django.AppConfig {
 		//}))
 
 		emails := group.Get("/emails", views.Serve(ViewEmails), "emails")
-		emails.Get("/delete", views.Serve(ViewDeleteEmail), "delete")
-		emails.Post("/delete", views.Serve(ViewDeleteEmail))
+		emails.Get("/<<email_id>>/delete", views.Serve(ViewDeleteEmail), "delete")
+		emails.Post("/<<email_id>>/delete", views.Serve(ViewDeleteEmail))
 
 		htmxEmails := htmx.Get("/emails", nil, "emails")
 		htmxEmails.Get("/add", views.Serve(ViewAddEmailHtmx), "add")
 		htmxEmails.Post("/add", views.Serve(ViewAddEmailHtmx))
-		htmxEmails.Get("/update", views.Serve(ViewUpdateEmailPasswordHtmx), "update")
-		htmxEmails.Post("/update", views.Serve(ViewUpdateEmailPasswordHtmx))
+		htmxEmails.Get("/<<email_id>>/update", views.Serve(ViewUpdateEmailPasswordHtmx), "update")
+		htmxEmails.Post("/<<email_id>>/update", views.Serve(ViewUpdateEmailPasswordHtmx))
 
 		aliasses := group.Get("/aliasses", views.Serve(ViewAliasses), "aliasses")
-		_ = aliasses
+		aliasses.Get("/<<alias_id>>/delete", views.Serve(ViewDeleteAlias), "delete")
+		aliasses.Post("/<<alias_id>>/delete", views.Serve(ViewDeleteAlias), "delete")
 
 		htmxAliases := htmx.Get("/aliasses", nil, "aliasses")
 		htmxAliases.Get("/add", views.Serve(ViewAddAliasHtmx), "add")
 		htmxAliases.Post("/add", views.Serve(ViewAddAliasHtmx))
+		htmxAliases.Get("/add/<<email_id>>", views.Serve(ViewAddAliasToUserHtmx), "add_user")
+		htmxAliases.Post("/add/<<email_id>>", views.Serve(ViewAddAliasToUserHtmx))
 
 		domains := group.Get("/domains", views.Serve(ViewDomains), "domains")
 		domains.Get("/add", views.Serve(ViewAddDomain), "add")

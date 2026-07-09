@@ -104,6 +104,7 @@ type BoundModalView[T baseView[*BoundModalView[T]]] struct {
 
 type BoundFormModalView[FORM forms.Form] struct {
 	GenericBoundModalView[*BoundFormModalView[FORM], *ModalFormView[FORM]]
+	Data    map[string]interface{}
 	Context ctx.Context
 	Form    FORM
 }
@@ -114,8 +115,12 @@ func (l *BoundFormModalView[FORM]) Setup(w http.ResponseWriter, r *http.Request)
 		"View %T must provide GetForm", l.View,
 	)
 
+	if l.Data == nil {
+		l.Data = make(map[string]interface{})
+	}
+
 	var err error
-	l.Form, err = l.View.GetForm(r)
+	l.Form, err = l.View.GetForm(l, r)
 	if err != nil {
 		except.Fail(
 			http.StatusInternalServerError,
@@ -141,7 +146,7 @@ func (l *BoundFormModalView[FORM]) GetContext(req *http.Request) (c ctx.Context,
 			goto setupCtx
 		}
 
-		l.Form, valid, err = l.View.IsValid(req, l.Form)
+		l.Form, valid, err = l.View.IsValid(l, req, l.Form)
 		if err != nil {
 			return c, err
 		}
@@ -236,8 +241,8 @@ type ModalFormView[FORM forms.Form] struct {
 	GenericModalView[*BoundFormModalView[FORM]]
 	SubmitURL   any // string | func(*http.Request) string | func(view, *http.Request) string
 	SuccessText any // trans.GetText
-	GetForm     func(r *http.Request) (FORM, error)
-	IsValid     func(*http.Request, FORM) (f FORM, valid bool, err error)
+	GetForm     func(v *BoundFormModalView[FORM], r *http.Request) (FORM, error)
+	IsValid     func(*BoundFormModalView[FORM], *http.Request, FORM) (f FORM, valid bool, err error)
 }
 
 func (l *ModalFormView[T]) Bind(w http.ResponseWriter, req *http.Request) (views.View, error) {

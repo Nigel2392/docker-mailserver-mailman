@@ -61,10 +61,6 @@ var ViewDomains = &list.View[*Domain]{
 	},
 	ListColumns: []list.ListColumn[*Domain]{
 		list.Column[*Domain](
-			trans.S("ID"),
-			"ID",
-		),
-		list.Column[*Domain](
 			trans.S("Name"),
 			"Name",
 		),
