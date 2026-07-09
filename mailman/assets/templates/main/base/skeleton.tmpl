@@ -34,7 +34,7 @@
         </style>
         {{block "css" .}}{{end}}
     </head>
-    <body id="body" class="{{$mode.Name}}" data-controller="document" data-document-modes-value="{{ json modes }}" data-document-navbar-link-selector-value="a.menu-item">
+    <body id="body" class="{{$mode.Name}}" data-controller="document" data-document-modes-value="{{ json modes }}" data-document-navbar-link-selector-value=".sidebar-left a">
 
         {{template "navbar.tmpl" .}}
 

@@ -2,7 +2,7 @@
 
 {{ define "header" }}
     {{ $obj := (.Get "view.object") }}
-    {{ T "Delete Domain: %q" $obj.Name }}
+    {{ T "Delete Domain: %s" $obj.Name }}
 {{ end }}
 
 {{ define "view" }}

@@ -14,6 +14,7 @@ import (
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
+	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/core/assert"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
@@ -27,6 +28,7 @@ import (
 	"github.com/Nigel2392/go-django/src/views/list"
 	"github.com/Nigel2392/go-signals"
 	"github.com/Nigel2392/mux"
+	"github.com/Nigel2392/mux/middleware/authentication"
 )
 
 var ViewEmails = &list.View[*auth.User]{
@@ -324,14 +326,28 @@ var ViewDeleteEmail = &DeleteView[*UserMailProfile]{
 	BaseKey:  "main",
 	Template: "mailmgmt/emails/delete_email.tmpl",
 	NextURL:  "mailmgmt:emails",
-	GetObject: func(bdv *BoundDeleteView[*UserMailProfile], r *http.Request) (*UserMailProfile, error) {
+	HasPermission: func(bdv *BoundDeleteView[*UserMailProfile], w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
 		row, err := queries.GetQuerySet(&UserMailProfile{}).
 			WithContext(r.Context()).
 			Select("*", "User.*").
 			Filter("User.ID", mux.Vars(r).Get("email_id")).
 			Get()
+		if err != nil {
+			messages.Error(r, trans.T(r.Context(), "Error when retrieving user profile"))
+			http.Redirect(w, r, django.Reverse("mailmgmt:emails"), http.StatusFound)
+			return nil, nil
+		}
 
-		return row.Object, err
+		if row.Object.User.IsAdministrator && !authentication.Retrieve(r).IsAdmin() {
+			// return nil, errors.PermissionDenied.Wrap("You cannot delete an administrator.")
+			messages.Error(r, trans.T(r.Context(), "You cannot delete an administrator!"))
+			http.Redirect(w, r, django.Reverse("mailmgmt:emails"), http.StatusFound)
+			return nil, nil
+		}
+
+		bdv.Object = row.Object
+
+		return w, r
 	},
 	GetContext: func(bdv *BoundDeleteView[*UserMailProfile], hc *ctx.HTTPRequestContext) (ctx.Context, error) {
 		var aliassesQs, ok = bdv.Object.User.FieldDefs().Get("Aliasses").(*queries.RelM2M[attrs.Definer, attrs.Definer])

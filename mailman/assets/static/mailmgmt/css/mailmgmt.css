@@ -188,6 +188,11 @@ table.list td:nth-child(5) {
 table.list th:nth-child(6),
 table.list td:nth-child(6) {
 }
+table.list th:last-child,
+table.list td:last-child {
+    text-align: right;
+    padding-inline-end: 0.5rem;
+}
 .mailmgmt-list-table--head {
     text-align: left;
     padding: 0;
@@ -380,7 +385,56 @@ table.list .column-group:hover {
 .mailmgmt-action-button:hover {
     color: rgba(var(--color-primary-accent-rgb), 0.8);
 }
-.mailmgmt-action-icon {
+.mailmgmt-cards {
+    display: flex;
+    flex-direction: row;
+    margin-left: calc((100% - 1200px) / 2);
+    margin-top: 3rem;
+    max-width: 1200px;
+    gap: 2rem;
+}
+.mailmgmt-index-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex: 1 1 auto;
+    aspect-ratio: 1;
+    gap: 0.5rem;
+    padding: 1rem;
+    overflow: hidden;
+    border-radius: 50%;
+    color: rgba(var(--color-primary-rgb), 0.8);
+    text-decoration: none;
+    border: 1px solid var(--color-standout);
+    box-shadow: 6px 6px 6px rgba(var(--color-primary-rgb),0.3);
+    transition: all 0.1s ease-in-out;
+}
+.mailmgmt-index-card:hover {
+    box-shadow: 3px 3px 3px rgba(var(--color-primary-rgb),0.3);
+}
+.mailmgmt-index-card-display-container .icon {
+    margin-bottom: -3rem;
+    max-width: 4rem;
+}
+.mailmgmt-index-card-title {
+    font-size: 2rem;
+}
+.mailmgmt-index-card-display-container {
+    display: flex;
+    flex-direction: row;
+}
+.mailmgmt-index-card-display {
+    font-size: 8rem;
+}
+.icon.index-icon {
+    width: 10rem;
+}
+.icon.index-card-icon {
+    width: 100%;
+}
+.icon, .mailmgmt-action-icon {
     width: 1.5rem;
     aspect-ratio: 1;
 }

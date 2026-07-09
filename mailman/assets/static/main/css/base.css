@@ -283,6 +283,10 @@ h1, h2, h3, h4, h5, h6 {
   height: auto;
   padding: 1rem;
 }
+.sidebar-logo a {
+  display: flex;
+  position: relative;
+}
 .sidebar-left .menu-item,
 .sidebar-right .menu-item {
     display: flex;
@@ -302,6 +306,7 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--color-primary-accent);
     transition: color .5s ease-in-out;
 }
+.sidebar-logo a::before,
 .sidebar-left .menu-item::before,
 .sidebar-right .menu-item::before {
   content: "";
@@ -316,14 +321,19 @@ h1, h2, h3, h4, h5, h6 {
   border: 3px solid var(--color-standout);
   transition: all .2s linear;
 }
-.sidebar-left:has(.menu-item:hover:not(.active)) .menu-item.active::before,
-.sidebar-right:has(.menu-item:hover:not(.active)) .menu-item.active::before {
+.sidebar-logo a::before {
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.sidebar-left:has(a:hover:not(.active)) a.active::before,
+.sidebar-right:has(a:hover:not(.active)) a.active::before {
   opacity: 0;
 }
-.sidebar-left .menu-item:hover::before,
-.sidebar-right .menu-item:hover::before,
-.sidebar-left .menu-item.active::before,
-.sidebar-right .menu-item.active::before {
+.sidebar-left a:hover::before,
+.sidebar-right a:hover::before,
+.sidebar-left a.active::before,
+.sidebar-right a.active::before {
   opacity: 1;
 }
 .container {

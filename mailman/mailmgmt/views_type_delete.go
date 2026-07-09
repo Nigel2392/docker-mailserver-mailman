@@ -39,19 +39,21 @@ type BoundDeleteView[T any] struct {
 func (l *BoundDeleteView[T]) ServeXXX(w http.ResponseWriter, req *http.Request) {}
 
 func (l *BoundDeleteView[T]) Setup(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
+	if l.View.HasPermission != nil {
+		return l.View.HasPermission(l, w, r)
+	}
 	return w, r
 }
 
 func (l *BoundDeleteView[T]) GetContext(req *http.Request) (c ctx.Context, err error) {
 	var ctx = ctx.RequestContext(req)
 
-	if l.View.GetObject != nil {
+	if attrs.IsZero(l.Object) && l.View.GetObject != nil {
 		obj, err := l.View.GetObject(l, req)
 		if err != nil {
 			return ctx, err
 		}
 		l.Object = obj
-		ctx.Set("view.object", obj)
 	}
 
 	var rt = reflect.TypeFor[T]()
@@ -71,6 +73,7 @@ func (l *BoundDeleteView[T]) GetContext(req *http.Request) (c ctx.Context, err e
 		ctx.Set("view.object.label", label)
 	}
 
+	ctx.Set("view.object", l.Object)
 	ctx.Set("view.confirm", attrs.ToString(l.Object))
 
 	l.Context = ctx
@@ -143,14 +146,15 @@ func (l *BoundDeleteView[T]) Render(w http.ResponseWriter, req *http.Request, co
 }
 
 type DeleteView[T any] struct {
-	BaseKey    string
-	Title      any // string | func(*http.Request) string | func(context.Context) string
-	Template   any // string | func(*http.Request) string
-	NextURL    any // string | func(*http.Request) string | func(view, *http.Request) string
-	Render     func(*BoundDeleteView[T], io.Writer, *http.Request, ctx.Context) error
-	GetContext func(*BoundDeleteView[T], *ctx.HTTPRequestContext) (ctx.Context, error)
-	GetObject  func(*BoundDeleteView[T], *http.Request) (T, error)
-	Delete     func(*BoundDeleteView[T], *http.Request, T) error
+	BaseKey       string
+	Title         any // string | func(*http.Request) string | func(context.Context) string
+	Template      any // string | func(*http.Request) string
+	NextURL       any // string | func(*http.Request) string | func(view, *http.Request) string
+	HasPermission func(*BoundDeleteView[T], http.ResponseWriter, *http.Request) (http.ResponseWriter, *http.Request)
+	Render        func(*BoundDeleteView[T], io.Writer, *http.Request, ctx.Context) error
+	GetContext    func(*BoundDeleteView[T], *ctx.HTTPRequestContext) (ctx.Context, error)
+	GetObject     func(*BoundDeleteView[T], *http.Request) (T, error)
+	Delete        func(*BoundDeleteView[T], *http.Request, T) error
 }
 
 func (l *DeleteView[T]) ServeXXX(w http.ResponseWriter, req *http.Request) {}
