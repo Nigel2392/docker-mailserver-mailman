@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -212,9 +213,13 @@ func main() {
 	switch {
 	case userCount == 0 && MAILMAN_ADMIN_EMAIL != "" && MAILMAN_ADMIN_PASS != "":
 		var user = &auth.User{}
-		var e, _ = mail.ParseAddress(MAILMAN_ADMIN_EMAIL)
+		var e, err = mail.ParseAddress(MAILMAN_ADMIN_EMAIL)
+		if err != nil {
+			panic(err)
+		}
+
 		user.Email = (*drivers.Email)(e)
-		user.Username = "admin"
+		user.Username = strings.Split(e.Address, "@")[0]
 		user.IsAdministrator = true
 		user.IsActive = true
 		user.Password = auth.NewPassword(MAILMAN_ADMIN_PASS)

@@ -1,11 +1,31 @@
 services:
+  mailman:
+    build: .
+    container_name: mailman
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    # volumes:
+    #   - ./db:/mailman/db
+    #   - ./log:/mailman/log
+    environment:
+      - MAILSERVER_CONTAINER_NAME=mailserver
+      - MAILSERVER_CACHING_ENABLED=true
+      - MAILMAN_ADMIN_EMAIL=Administrator@example.com
+      - MAILMAN_ADMIN_PASSWORD=Your-real-db-password!123
+
   mailman_mailserver:
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: mailserver
     hostname: mail.example.com
+    restart: unless-stopped
+    depends_on:
+      - mailman
     ports:
       - "25:25"
+      - "587:587"
       - "993:993"
+      - "143:143"  # <-- ADD THIS LINE
     volumes:
       - mailman_mailserver_data:/var/mail/
       - mailman_mailserver_state:/var/mail-state/
@@ -20,8 +40,8 @@ services:
       # ---------------------------------------------
       - ACCOUNT_PROVISIONER=LDAP
       
-      # The IP of your Go application. 
-      - LDAP_SERVER_HOST=127.0.0.1
+      # The Go application's service name so the mailserver can reach it
+      - LDAP_SERVER_HOST=ldap://mailman:3890
       
       # The Base tree DMS will search. Our Go app ignores this, so it can be anything.
       # This will be changed later.
@@ -34,10 +54,19 @@ services:
       # The exact queries that trigger our Go 'SEARCH' handler regex/string extractors
       - LDAP_QUERY_FILTER_USER=(&(objectClass=user)(mail=%s))
       - LDAP_QUERY_FILTER_ALIAS=(&(objectClass=user)(otherMailbox=%s))
+      
       # Group and Domain filters are required by DMS, even if you don't use them yet
       - LDAP_QUERY_FILTER_GROUP=(&(objectclass=group)(mail=%s))
       - LDAP_QUERY_FILTER_DOMAIN=(&(|(mail=*@%s)(mailalias=*@%s)(mailGroupMember=*@%s))(mailEnabled=TRUE))
 
+      # Tell Dovecot to delegate password checking to our Go server's handleBind function
+      - DOVECOT_AUTH_BIND=yes
+      # Tell Dovecot how to find the user checking their mail
+      - DOVECOT_PASS_FILTER=(&(objectClass=user)(mail=%u))
+      - DOVECOT_USER_FILTER=(&(objectClass=user)(mail=%u))
+      # Tell Dovecot how to map our Go database attributes to its internal engines
+      - DOVECOT_PASS_ATTRS=uid=user,userPassword=password
+      - DOVECOT_USER_ATTRS==home=/var/mail/%d/%n,=uid=5000,=gid=5000,mailQuota=quota_rule
 volumes:
   mailman_mailserver_data:
   mailman_mailserver_state:

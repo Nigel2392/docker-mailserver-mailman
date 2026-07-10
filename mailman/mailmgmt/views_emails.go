@@ -208,10 +208,6 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 					fields.ReadOnly(true),
 					fields.Default(r.URL.Query().Get("email")),
 					fields.Label(trans.S("Email")),
-					fields.Attributes(map[string]string{
-						"autocomplete": "off",
-						"class":        "form-control accented",
-					}),
 				),
 				fields.CharField(
 					fields.Required(true),
@@ -219,10 +215,6 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 					fields.Label(trans.S("Password")),
 					fields.HelpText(trans.S("Enter the new password for the e-mail adress.")),
 					fields.Widget(widgets.NewPasswordInput(nil)),
-					fields.Attributes(map[string]string{
-						"autocomplete": "off",
-						"class":        "form-control accented",
-					}),
 					auth.ValidateCharacters(true, auth.ChrFlagAll),
 				),
 				fields.CharField(
@@ -231,10 +223,6 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 					fields.Label(trans.S("Confirm Password")),
 					fields.HelpText(trans.S("Confirm the new password for the e-mail adress.")),
 					fields.Widget(widgets.NewPasswordInput(nil)),
-					fields.Attributes(map[string]string{
-						"autocomplete": "off",
-						"class":        "form-control accented",
-					}),
 				),
 			),
 		)
@@ -251,6 +239,13 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 			}
 			return nil
 		})
+		for head := form.FormFields.Front(); head != nil; head = head.Next() {
+			head.Value.SetAttrs(map[string]string{
+				"autocomplete": "off",
+				"class":        "form-control accented",
+			})
+		}
+
 		return form, nil
 	},
 	//IsValid: func(r *http.Request, f forms.Form) (forms.Form, bool, error) {

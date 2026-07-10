@@ -102,8 +102,8 @@ var ViewAddDomain = &views.FormView[*modelforms.BaseModelForm[*Domain]]{
 		http.Redirect(w, req, django.Reverse("mailmgmt:domains"), http.StatusSeeOther)
 	},
 	GetFormFn: func(req *http.Request) *modelforms.BaseModelForm[*Domain] {
-		var f = modelforms.NewBaseModelForm(
-			req.Context(), &Domain{},
+		var f = modelforms.NewBaseModelForm[*Domain](
+			req.Context(), nil,
 		)
 
 		f.SetFields(
@@ -113,6 +113,10 @@ var ViewAddDomain = &views.FormView[*modelforms.BaseModelForm[*Domain]]{
 		)
 
 		f.Load()
+
+		f.SetInitial(map[string]interface{}{
+			"IsActive": true,
+		})
 
 		return f
 	},
