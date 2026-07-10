@@ -78,7 +78,7 @@ func (l *GenericBoundModalView[_BOUND, VIEW]) Render(w http.ResponseWriter, req 
 
 	var modalTitle string
 	if title := l.View.GetTitle(req); title != "" {
-		modalTitle = fmt.Sprintf(`<div class="modal-header">%s</div>`, title)
+		modalTitle = fmt.Sprintf(`<div class="modal-header noselect">%s</div>`, title)
 	}
 
 	fmt.Fprintf(w, `<div id="modal-%s" data-controller="form-modal">

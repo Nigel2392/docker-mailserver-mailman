@@ -57,8 +57,6 @@ func GetEnvT[T any](key string, default_ T, convert func(in string) (out T, err 
 
 func main() {
 	var (
-		RUNNING_IN_DOCKER = GetEnvT("DOCKER", false, strconv.ParseBool)
-
 		MAILSERVER_CONTAINER_NAME  = GetEnv("MAILSERVER_CONTAINER_NAME")
 		MAILSERVER_CACHING_ENABLED = GetEnvT("MAILSERVER_CACHING_ENABLED", true, strconv.ParseBool)
 
@@ -105,7 +103,7 @@ func main() {
 			django.APPVAR_HOST:                  MAILMAN_INTERFACE,
 			django.APPVAR_PORT:                  MAILMAN_PORT,
 			django.APPVAR_DEBUG:                 !RUNNING_IN_DOCKER,
-			django.APPVAR_RECOVERER:             false,
+			django.APPVAR_RECOVERER:             RUNNING_IN_DOCKER,
 			auth.APPVAR_AUTH_EMAIL_LOGIN:        true,
 			auth.APPVAR_ALLOW_USER_REGISTER:     false,
 			migrator.APPVAR_MIGRATION_DIR:       "./migrations",
@@ -197,10 +195,6 @@ func main() {
 
 	if _, _, err := migrator.AutoMigrate(context.Background()); err != nil {
 		panic(err)
-	}
-
-	for _, field := range (&auth.User{}).FieldDefs().Fields() {
-		fmt.Println("USER FIELD NAME: ", field.Name())
 	}
 
 	// testCommands()

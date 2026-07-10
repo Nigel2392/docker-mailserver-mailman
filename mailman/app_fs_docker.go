@@ -13,6 +13,8 @@ import (
 //go:embed assets/**
 var assetsFS embed.FS
 
+var RUNNING_IN_DOCKER = true
+
 func initAppFS() (fs.FS, fs.FS) {
 	var tplFS = filesystem.Sub(assetsFS, "assets/templates")
 	var staticFS = filesystem.Sub(assetsFS, "assets/static")

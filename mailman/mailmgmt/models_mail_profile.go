@@ -12,10 +12,9 @@ import (
 type UserMailProfile struct {
 	models.Model `table:"mail_quota" label:"User" json:"-"`
 
-	ID      uint64
-	Deleted bool // is the user deleted?
-	User    *auth.User
-	Bytes   uint
+	ID    uint64
+	User  *auth.User
+	Bytes uint
 }
 
 func (n *UserMailProfile) String() string {
@@ -77,10 +76,6 @@ func (m *UserMailProfile) FieldDefs() attrs.Definitions {
 				attrs.AttrUniqueKey:       true,
 				attrs.AttrReverseAliasKey: "Profile",
 			},
-		}),
-		attrs.Unbound("Deleted", &attrs.FieldConfig{
-			ReadOnly: true,
-			Label:    trans.S("Deleted"),
 		}),
 		attrs.Unbound("Bytes", &attrs.FieldConfig{
 			ReadOnly: true,

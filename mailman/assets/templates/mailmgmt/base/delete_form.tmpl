@@ -13,11 +13,16 @@
             {{ block "header" . }}{{ end }}
         </div>
 
-        <div class="alert-container alert alert-danger">
-            <h3>{{ T "Careful!" }}</h3>
-            <p>{{ T "Are you sure you want to delete this %s?" (.Get "view.object.label") }}</p>
-            <p>{{ T "This action cannot be undone." }}</p>
-        </div>
+        {{ if gt (len (.Get "view.message")) 1}}
+            <div class="alert-container alert alert-danger">
+                {{ if .Get "view.title" }}
+                <h3>{{ .Get "view.title" }}</h3>
+                {{ end }}
+                {{ range $msg := .Get "view.message" }}
+                <p>{{ $msg }}</p>
+                {{ end }}
+            </div>
+        {{ end }}
     
         <div class="mailmgmt-content">
 

@@ -224,7 +224,7 @@ func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email 
 		WithContext(ctx).
 		Select("*", "Profile.*").
 		Filter("Email__iexact", email).
-		Filter("Profile.Deleted", false).
+		Filter("IsActive", true).
 		Get()
 
 	if err != nil || userRow == nil {

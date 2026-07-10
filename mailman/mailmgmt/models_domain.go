@@ -19,6 +19,7 @@ type Domain struct {
 	ID           int64
 	Name         string
 	Domain       string
+	IsActive     bool
 }
 
 func (n *Domain) FieldDefs() attrs.Definitions {
@@ -62,6 +63,13 @@ func (n *Domain) Fields(d attrs.Definer) []attrs.Field {
 			Blank:     false,
 			MinLength: 2,
 			MaxLength: 256,
+		}),
+		attrs.NewField(n, "IsActive", &attrs.FieldConfig{
+			HelpText: trans.S("Wether this domain is enabled."),
+			Column:   "is_active",
+			Null:     false,
+			Blank:    true,
+			Default:  true,
 		}),
 	}
 }

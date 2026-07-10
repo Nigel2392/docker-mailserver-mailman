@@ -11,7 +11,6 @@ WORKDIR /mailman
 
 COPY ./mailman /mailman/mailman
 COPY ./templates /mailman/templates
-COPY ./vendor /mailman/vendor
 COPY ./go.mod /mailman
 COPY ./go.sum /mailman
   

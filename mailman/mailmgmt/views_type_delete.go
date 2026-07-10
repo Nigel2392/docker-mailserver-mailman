@@ -76,6 +76,29 @@ func (l *BoundDeleteView[T]) GetContext(req *http.Request) (c ctx.Context, err e
 	ctx.Set("view.object", l.Object)
 	ctx.Set("view.confirm", attrs.ToString(l.Object))
 
+	var message = []string{
+		trans.T(req.Context(), "Careful!"),
+		trans.T(req.Context(), "Are you sure you want to delete this %s?", ctx.Get("view.object.label")),
+		trans.T(req.Context(), "This action cannot be undone."),
+	}
+
+	if l.View.Message != nil {
+		message = l.View.Message(l, req)
+	}
+
+	if l.View.ExtraMessage != nil {
+		message = append(message, l.View.ExtraMessage(l, req)...)
+	}
+
+	switch {
+	case len(message) > 1:
+		ctx.Set("view.title", message[0])
+		ctx.Set("view.message", message[1:])
+
+	case len(message) == 1:
+		ctx.Set("view.message", message)
+	}
+
 	l.Context = ctx
 	if l.View.GetContext != nil {
 		c, err = l.View.GetContext(l, ctx)
@@ -151,6 +174,8 @@ type DeleteView[T any] struct {
 	Template      any // string | func(*http.Request) string
 	NextURL       any // string | func(*http.Request) string | func(view, *http.Request) string
 	HasPermission func(*BoundDeleteView[T], http.ResponseWriter, *http.Request) (http.ResponseWriter, *http.Request)
+	Message       func(*BoundDeleteView[T], *http.Request) []string
+	ExtraMessage  func(*BoundDeleteView[T], *http.Request) []string
 	Render        func(*BoundDeleteView[T], io.Writer, *http.Request, ctx.Context) error
 	GetContext    func(*BoundDeleteView[T], *ctx.HTTPRequestContext) (ctx.Context, error)
 	GetObject     func(*BoundDeleteView[T], *http.Request) (T, error)

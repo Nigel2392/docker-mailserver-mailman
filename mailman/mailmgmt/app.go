@@ -57,6 +57,10 @@ var _, _ = queries.SignalPostModelCreate.Listen(func(s signals.Signal[queries.Si
 
 func NewAppConfig() django.AppConfig {
 
+	attrs.RegisterConfigChange(&auth.User{}, "Username", func(fc *attrs.FieldConfig) {
+		fc.MaxLength = 256
+	})
+
 	CONFIG = &MailManagementConfig{
 		AppConfig: apps.NewAppConfig("mailmgmt"),
 	}
@@ -122,8 +126,8 @@ func NewAppConfig() django.AppConfig {
 		domains := group.Get("/domains", views.Serve(ViewDomains), "domains")
 		domains.Get("/add", views.Serve(ViewAddDomain), "add")
 		domains.Post("/add", views.Serve(ViewAddDomain), "add")
-		domains.Get("/delete", views.Serve(ViewDeleteDomain), "delete")
-		domains.Post("/delete", views.Serve(ViewDeleteDomain), "delete")
+		domains.Get("/delete/<<domain_id>>", views.Serve(ViewDeleteDomain), "delete")
+		domains.Post("/delete/<<domain_id>>", views.Serve(ViewDeleteDomain), "delete")
 	}
 
 	return CONFIG

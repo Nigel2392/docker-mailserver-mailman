@@ -1,3 +1,6 @@
+//go:build !docker
+// +build !docker
+
 package main
 
 import (
@@ -13,6 +16,8 @@ import (
 	"github.com/Nigel2392/go-django/src/core/logger"
 	"github.com/fsnotify/fsnotify"
 )
+
+var RUNNING_IN_DOCKER = false
 
 func initAppFS() (fs.FS, fs.FS) {
 	var (

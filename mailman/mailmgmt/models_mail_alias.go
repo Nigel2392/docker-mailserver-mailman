@@ -42,7 +42,8 @@ type MailAlias struct {
 	ID          uint64                                      `json:"id" attrs:"primary;readonly"`
 	Source      *drivers.Email                              `json:"source"` // e.g. "info@example.com"
 	Destination *queries.RelM2M[*auth.User, *MailAliasUser] `json:"-"`
-	IsActive    bool                                        `json:"is_active"`
+	UserCount   int
+	IsActive    bool `json:"is_active"`
 }
 
 func (n *MailAlias) String() string {
@@ -87,6 +88,9 @@ func (u *MailAlias) Fields() []any {
 			Column: "is_active",
 			Blank:  true,
 		}),
+		fields.NewDataModelField[int](
+			u, &u.UserCount, "UserCount",
+		),
 	}
 }
 

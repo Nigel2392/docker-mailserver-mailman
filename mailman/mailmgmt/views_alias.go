@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"net/mail"
 	"strconv"
 
 	queries "github.com/Nigel2392/go-django/queries/src"
@@ -30,8 +29,11 @@ var ViewAliasses = &list.View[*MailAlias]{
 	TemplateName:    "mailmgmt/aliasses/aliasses.tmpl",
 	PageParam:       "page",
 	AmountParam:     "limit",
-	MaxAmount:       DEFAULT_LIMIT_CHOICES[len(DEFAULT_LIMIT_CHOICES)-1],
-	DefaultAmount:   DEFAULT_LIMIT_CHOICES[0],
+	OrderableColumns: []string{
+		"Source", "UserCount", "IsActive",
+	},
+	MaxAmount:     DEFAULT_LIMIT_CHOICES[len(DEFAULT_LIMIT_CHOICES)-1],
+	DefaultAmount: DEFAULT_LIMIT_CHOICES[0],
 	Mixins: func(r *http.Request, v *list.View[*MailAlias]) []views.View {
 		return []views.View{SetupViewMixin{Func: func(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request) {
 			r = r.WithContext(list.SetAllowListRowSelect(r.Context(), true))
@@ -44,7 +46,7 @@ var ViewAliasses = &list.View[*MailAlias]{
 			Select("ID", "Source", "IsActive").
 			GroupBy("ID").
 			Annotate("UserCount", expr.COUNT("Destination.ID")). // Count the joined user IDs
-			OrderBy("Source")
+			OrderBy("-IsActive", "-UserCount", "Source")
 	},
 	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*MailAlias]) (ctx.Context, error) {
 		c := ctx.RequestContext(r)
@@ -78,11 +80,9 @@ var ViewAliasses = &list.View[*MailAlias]{
 			trans.S("Email"),
 			"Source",
 		),
-		list.FuncColumn(
+		list.FieldColumn[*MailAlias](
 			trans.S("User Count"),
-			func(r *http.Request, defs attrs.Definitions, row *MailAlias) interface{} {
-				return row.Annotations["UserCount"]
-			},
+			"UserCount",
 		),
 		list.BooleanFieldColumn[*MailAlias](
 			trans.S("IsActive"),
@@ -113,7 +113,7 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 	SuccessText: trans.S("Alias created successfully."),
 	GetForm: func(v *BoundFormModalView[forms.Form], r *http.Request) (forms.Form, error) {
 		var form = forms.NewBaseForm(r.Context())
-		form.AddField("alias", fields.EmailField(
+		form.AddField("alias", fields.CharField(
 			fields.Required(true),
 			fields.Name("alias"),
 			fields.Label(trans.S("Alias")),
@@ -121,14 +121,20 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 				"autocomplete": "off",
 				"class":        "form-control accented",
 			}),
+			fields.Widget(NewEmailDomainWidget(nil)),
 		))
 
 		return form, nil
 	},
 	IsValid: func(v *BoundFormModalView[forms.Form], r *http.Request, f forms.Form) (forms.Form, bool, error) {
 		var c = f.CleanedData()
+		var eml, err = getCleanedEmail(c, "alias")
+		if err != nil {
+			return nil, false, err
+		}
+
 		var ma = &MailAlias{
-			Source:   (*drivers.Email)(c["alias"].(*mail.Address)),
+			Source:   (*drivers.Email)(eml),
 			IsActive: true,
 		}
 
@@ -201,6 +207,7 @@ var ViewAddAliasToUserHtmx = &ModalFormView[forms.Form]{
 				"autocomplete": "off",
 				"class":        "form-control accented",
 			}),
+			fields.Widget(NewEmailDomainWidget(nil)),
 		))
 		return form, nil
 	},
@@ -212,12 +219,17 @@ var ViewAddAliasToUserHtmx = &ModalFormView[forms.Form]{
 		)
 
 		var c = f.CleanedData()
+		var eml, err = getCleanedEmail(c, "alias")
+		if err != nil {
+			return nil, false, err
+		}
+
 		var ma = &MailAlias{
-			Source:   (*drivers.Email)(c["alias"].(*mail.Address)),
+			Source:   (*drivers.Email)(eml),
 			IsActive: true,
 		}
 
-		ma, _, err := queries.
+		ma, _, err = queries.
 			GetQuerySetWithContext(r.Context(), &MailAlias{}).
 			Filter("Source__iexact", ma.Source.Address).
 			GetOrCreate(ma)
