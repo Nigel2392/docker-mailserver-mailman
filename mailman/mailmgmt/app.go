@@ -114,8 +114,10 @@ func NewAppConfig() django.AppConfig {
 		htmxEmails.Post("/<<email_id>>/update", views.Serve(ViewUpdateEmailPasswordHtmx))
 
 		aliasses := group.Get("/aliasses", views.Serve(ViewAliasses), "aliasses")
-		aliasses.Get("/<<alias_id>>/delete", views.Serve(ViewDeleteAlias), "delete")
-		aliasses.Post("/<<alias_id>>/delete", views.Serve(ViewDeleteAlias), "delete")
+		aliasses.Get("/detail/<<alias_id>>", views.Serve(ViewAliasDetail), "detail")
+		aliasses.Post("/detail/<<alias_id>>", views.Serve(ViewAliasDetail), "detail")
+		aliasses.Get("/delete/<<alias_id>>", views.Serve(ViewDeleteAlias), "delete")
+		aliasses.Post("/delete/<<alias_id>>", views.Serve(ViewDeleteAlias), "delete")
 
 		htmxAliases := htmx.Get("/aliasses", nil, "aliasses")
 		htmxAliases.Get("/add", views.Serve(ViewAddAliasHtmx), "add")

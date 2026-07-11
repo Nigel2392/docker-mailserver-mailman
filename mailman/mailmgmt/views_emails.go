@@ -273,9 +273,12 @@ var ViewUpdateEmailPasswordHtmx = &ModalFormView[forms.Form]{
 }
 
 var ViewDeleteEmail = &DeleteView[*UserMailProfile]{
-	BaseKey:  "main",
-	Template: "mailmgmt/emails/delete_email.tmpl",
-	NextURL:  "mailmgmt:emails",
+	BaseKey: "main",
+	Template: []string{
+		"mailmgmt/base/delete_form.tmpl",
+		"mailmgmt/emails/delete_email.tmpl",
+	},
+	NextURL: "mailmgmt:emails",
 	ExtraMessage: func(bdv *BoundDeleteView[*UserMailProfile], r *http.Request) []string {
 		return []string{trans.T(r.Context(), "Aliasses will not be deleted.")}
 	},

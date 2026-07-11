@@ -1,0 +1,35 @@
+{{ template "skeleton" . }}
+
+{{ define "title" }}{{ T "%s | Details" (toString .Data.object) }}{{ end }}
+
+{{ define "css" }}
+    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
+{{ end }}
+
+{{ define "content" }}
+    <div class="mailmgmt-object">
+
+        <div class="mailmgmt-header">
+            {{ block "header" . }}{{ T "Viewing: %s" (toString .Data.object) }}{{ end }}
+        </div>
+
+        {{ if (.Get "view.message") }}
+            {{ if gt (len (.Get "view.message")) 1}}
+                <div class="alert-container alert alert-info">
+                    {{ if .Get "view.title" }}
+                    <h3>{{ .Get "view.title" }}</h3>
+                    {{ end }}
+                    {{ range $msg := .Get "view.message" }}
+                    <p>{{ $msg }}</p>
+                    {{ end }}
+                </div>
+            {{ end }}
+        {{ end }}
+    
+        <div class="mailmgmt-content">
+
+            {{ block "view" . }}{{ end }}
+
+        </div>
+    </div>
+{{ end }}

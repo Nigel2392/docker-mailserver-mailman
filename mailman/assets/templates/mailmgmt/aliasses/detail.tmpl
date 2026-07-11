@@ -1,0 +1,13 @@
+{{ template "detail_base" . }}
+
+{{ define "view" }}
+    {{ $users := .Data.object.Destination.AsList }}
+    {{ if gt (len $users) 0 }}
+    <h3 class="color-standout">{{ T "Users that are using this alias:" }}</h3>
+    <ul>{{ range $user := $users }}
+        <li>{{ $user.Model.Email.Address }}</li>
+    {{ end }}</ul>
+    {{ else }}
+    <h3 class="color-standout">{{ T "No users are using this alias." }}</h3>
+    {{ end }}
+{{ end }}

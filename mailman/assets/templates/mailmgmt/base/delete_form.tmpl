@@ -10,7 +10,7 @@
     <div class="mailmgmt-object">
 
         <div class="mailmgmt-header">
-            {{ block "header" . }}{{ end }}
+            {{ block "header" . }}{{ T "Delete %s" (.Get "view.object.label") }}{{ end }}
         </div>
 
         {{ if gt (len (.Get "view.message")) 1}}

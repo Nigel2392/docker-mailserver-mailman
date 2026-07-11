@@ -123,9 +123,12 @@ var ViewAddDomain = &views.FormView[*modelforms.BaseModelForm[*Domain]]{
 }
 
 var ViewDeleteDomain = &DeleteView[*Domain]{
-	BaseKey:  "main",
-	Template: "mailmgmt/domains/delete_domain.tmpl",
-	NextURL:  "mailmgmt:domains",
+	BaseKey: "main",
+	Template: []string{
+		"mailmgmt/base/delete_form.tmpl",
+		"mailmgmt/domains/delete_domain.tmpl",
+	},
+	NextURL: "mailmgmt:domains",
 	GetObject: func(bdv *BoundDeleteView[*Domain], r *http.Request) (*Domain, error) {
 		row, err := queries.GetQuerySet(&Domain{}).
 			WithContext(r.Context()).
@@ -203,9 +206,12 @@ var ViewDeleteDomain = &DeleteView[*Domain]{
 }
 
 var ViewDeactivateDomain = &DeleteView[*Domain]{
-	BaseKey:  "main",
-	Template: "mailmgmt/domains/delete_domain.tmpl",
-	NextURL:  "mailmgmt:domains",
+	BaseKey: "main",
+	Template: []string{
+		"mailmgmt/base/delete_form.tmpl",
+		"mailmgmt/domains/delete_domain.tmpl",
+	},
+	NextURL: "mailmgmt:domains",
 	GetObject: func(bdv *BoundDeleteView[*Domain], r *http.Request) (*Domain, error) {
 		row, err := queries.GetQuerySet(&Domain{}).
 			WithContext(r.Context()).

@@ -104,6 +104,27 @@ var ViewAliasses = &list.View[*MailAlias]{
 	},
 }
 
+var ViewAliasDetail = &views.DetailView[*MailAlias]{
+	URLArgName: "alias_id",
+	BaseView: views.BaseView{
+		BaseTemplateKey: "main",
+		TemplateName: []string{
+			"mailmgmt/base/detail_base.tmpl",
+			"mailmgmt/aliasses/detail.tmpl",
+		},
+		AllowedMethods: []string{"GET", "POST"},
+	},
+	GetObjectFn: func(req *http.Request, urlArg string) (*MailAlias, error) {
+		var row, err = queries.
+			GetQuerySetWithContext(req.Context(), &MailAlias{}).
+			Select("*").
+			Preload("Destination").
+			Filter("ID", urlArg).
+			Get()
+		return row.Object, err
+	},
+}
+
 var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 	GenericModalView: GenericModalView[*BoundFormModalView[forms.Form]]{
 		Template:       "mailmgmt/base/modal_form.tmpl",
@@ -247,9 +268,12 @@ var ViewAddAliasToUserHtmx = &ModalFormView[forms.Form]{
 }
 
 var ViewDeleteAlias = &DeleteView[*MailAlias]{
-	BaseKey:  "main",
-	Template: "mailmgmt/aliasses/delete_alias.tmpl",
-	NextURL:  "mailmgmt:aliasses",
+	BaseKey: "main",
+	Template: []string{
+		"mailmgmt/base/delete_form.tmpl",
+		"mailmgmt/aliasses/delete_alias.tmpl",
+	},
+	NextURL: "mailmgmt:aliasses",
 	GetObject: func(bdv *BoundDeleteView[*MailAlias], r *http.Request) (*MailAlias, error) {
 		row, err := queries.GetQuerySet(&MailAlias{}).
 			WithContext(r.Context()).

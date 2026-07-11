@@ -21,13 +21,13 @@ import (
 )
 
 var (
-	_ views.View           = (*DeleteView[any])(nil)
-	_ views.MethodsView    = (*DeleteView[any])(nil)
-	_ views.BindableView   = (*DeleteView[any])(nil)
-	_ views.TemplateKeyer  = (*DeleteView[any])(nil)
-	_ views.TemplateGetter = (*DeleteView[any])(nil)
-	_ views.View           = (*BoundDeleteView[any])(nil)
-	_ views.SetupView      = (*BoundDeleteView[any])(nil)
+	_ views.View            = (*DeleteView[any])(nil)
+	_ views.MethodsView     = (*DeleteView[any])(nil)
+	_ views.BindableView    = (*DeleteView[any])(nil)
+	_ views.TemplateKeyer   = (*DeleteView[any])(nil)
+	_ views.TemplatesGetter = (*DeleteView[any])(nil)
+	_ views.View            = (*BoundDeleteView[any])(nil)
+	_ views.SetupView       = (*BoundDeleteView[any])(nil)
 )
 
 type BoundDeleteView[T any] struct {
@@ -154,14 +154,14 @@ func (l *BoundDeleteView[T]) Render(w http.ResponseWriter, req *http.Request, co
 
 	var (
 		base     = l.View.GetBaseKey()
-		template = l.View.GetTemplate(req)
+		template = l.View.GetTemplates(req)
 	)
 
 	switch {
 	case l.View.Render != nil:
 		err = l.View.Render(l, w, req, context)
-	case base != "" || template != "":
-		err = tpl.FRender(w, context, base, template)
+	case base != "" || len(template) > 0:
+		err = tpl.FRender(w, context, base, template...)
 	default:
 		return errors.Wrap(errs.ErrNotImplemented, "view.Render not set and no template specified")
 	}
@@ -171,7 +171,7 @@ func (l *BoundDeleteView[T]) Render(w http.ResponseWriter, req *http.Request, co
 type DeleteView[T any] struct {
 	BaseKey       string
 	Title         any // string | func(*http.Request) string | func(context.Context) string
-	Template      any // string | func(*http.Request) string
+	Template      any // string | func(*http.Request) string | []string
 	NextURL       any // string | func(*http.Request) string | func(view, *http.Request) string
 	HasPermission func(*BoundDeleteView[T], http.ResponseWriter, *http.Request) (http.ResponseWriter, *http.Request)
 	Message       func(*BoundDeleteView[T], *http.Request) []string
@@ -192,14 +192,16 @@ func (l *DeleteView[T]) GetBaseKey() string {
 	return l.BaseKey
 }
 
-func (l *DeleteView[T]) GetTemplate(req *http.Request) string {
+func (l *DeleteView[T]) GetTemplates(req *http.Request) []string {
 	switch t := l.Template.(type) {
 	case string:
-		return t
+		return []string{t}
 	case func(*http.Request) string:
-		return t(req)
+		return []string{t(req)}
+	case []string:
+		return t
 	}
-	return ""
+	return []string{}
 }
 
 func (l *DeleteView[T]) GetTitle(req *http.Request) string {

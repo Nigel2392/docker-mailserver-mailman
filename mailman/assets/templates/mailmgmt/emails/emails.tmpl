@@ -8,7 +8,7 @@
 
 {{ define "content" }}
     <div class="mailmgmt-list" data-controller="table-list">
-        {{ include . "" "mailmgmt/partials/list_form.tmpl" "mailmgmt/partials/email_list_form.tmpl" }}
+        {{ include . "" "mailmgmt/partials/list_form.tmpl" "mailmgmt/emails/email_list_form.tmpl" }}
 
         <div class="mailmgmt-list-table-wrapper">
             {{ $list := (.Get "view_list") }}

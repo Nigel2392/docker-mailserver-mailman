@@ -75,7 +75,6 @@ func NewAppConfig() django.AppConfig {
 			"main/base/navbar.tmpl",
 			"main/base/messages.tmpl",
 
-			"mailmgmt/base/delete_form.tmpl",
 			"mailmgmt/partials/list_form.tmpl",
 		},
 		Matches: filesystem.MatchOr(
