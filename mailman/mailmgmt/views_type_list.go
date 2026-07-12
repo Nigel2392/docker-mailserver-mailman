@@ -160,8 +160,8 @@ func (l *BoundListView[T]) GetContext(req *http.Request) (c ctx.Context, err err
 			"hx-indicator": "#list-body",
 		})
 
-		ctx.Set("view.paginator", l.Paginator)
-		ctx.Set("view.paginator.object", pageObj)
+		ctx.Set("view_paginator", l.Paginator)
+		ctx.Set("view_paginator_object", pageObj)
 	}
 
 	if l.View.LimitChoices != nil {

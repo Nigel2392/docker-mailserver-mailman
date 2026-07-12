@@ -61,7 +61,7 @@ func (l *GenericBoundModalView[_BOUND, VIEW]) Render(w http.ResponseWriter, req 
 
 	context.Set("view.modal", l)
 	context.Set("view.modal.id", fmt.Sprintf(
-		"modal-%s", uuid,
+		"modal-add-%s", uuid,
 	))
 
 	switch {
@@ -81,7 +81,7 @@ func (l *GenericBoundModalView[_BOUND, VIEW]) Render(w http.ResponseWriter, req 
 		modalTitle = fmt.Sprintf(`<div class="modal-header noselect">%s</div>`, title)
 	}
 
-	fmt.Fprintf(w, `<div id="modal-%s" data-controller="form-modal">
+	fmt.Fprintf(w, `<div id="modal-add-%s" data-controller="form-modal">
     	<div class="modal-underlay" data-form-modal-target="underlay" data-action="click->form-modal#%s"></div>
     	<div class="modal-container" data-form-modal-target="modal">
     		%s

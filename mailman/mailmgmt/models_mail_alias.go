@@ -46,6 +46,10 @@ type MailAlias struct {
 	IsActive    bool `json:"is_active"`
 }
 
+func (a *MailAlias) OrderBy() []string {
+	return []string{"-IsActive", "Source"}
+}
+
 func (n *MailAlias) String() string {
 	return n.Source.Address
 }

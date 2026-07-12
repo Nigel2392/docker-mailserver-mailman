@@ -1,0 +1,19 @@
+{{ define "htmx_alias_remove" }}
+    <li data-controller="tooltip" data-tooltip-content-value="{{ T "Remove alias from user." }}" data-tooltip-placement-value="right" id="alias-{{ .Data.Alias.ID }}">
+        <form 
+            method="post"
+            action="{{ url "mailmgmt:htmx:emails:remove_alias" .Data.Object.ID }}"
+            hx-post="{{ url "mailmgmt:htmx:emails:remove_alias" .Data.Object.ID }}"
+            hx-target="#alias-{{ .Data.Alias.ID }}"
+            hx-swap="outerHTML">
+            {{ csrf_field }}
+            <span class="address-text">
+                {{ .Data.Alias.Source.Address }}
+                {{ if not .Data.Alias.IsActive }}({{ T "Inactive" }}){{ end }}
+            </span>
+            <button type="submit" name="confirm" class="text-btn" value="{{ .Data.Alias.ID }}">
+                {{ T "Remove..." }}
+            </button>
+        </form>
+    </li>
+{{ end }}

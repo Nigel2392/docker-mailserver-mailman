@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/chooser"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/ldap"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
@@ -133,6 +134,7 @@ func main() {
 			mailmgmt.NewAppConfig,
 			sieve.NewAppConfig,
 			ldap.NewAppConfig,
+			chooser.NewAppConfig,
 			// translate.NewAppConfig,
 			messages.NewAppConfig,
 			NewAppConfig,

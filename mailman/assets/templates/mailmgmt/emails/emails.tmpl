@@ -16,7 +16,9 @@
         </div>
 
         <div class="mailmgmt-paginator-container">
-            <div id="mailmgmt-paginator" class="mailmgmt-list-paginator"></div>
+            <div id="mailmgmt-paginator" class="mailmgmt-list-paginator">
+                {{ (.Get "view_paginator_object").HTML "page" 5 .Request.URL.Query }}
+            </div>
         </div>
 
     </div>

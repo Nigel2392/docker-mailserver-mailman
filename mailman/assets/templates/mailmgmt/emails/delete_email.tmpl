@@ -6,6 +6,7 @@
 {{ end }}
 
 {{ define "view" }}
+<div class="mailmgmt-delete-list">
     {{ if gt (len .Data.aliasses) 0 }}
         <h3 class="color-standout">{{ T "Aliasses:" }}</h3>
     <ul>{{ range $alias := .Data.aliasses }}
@@ -14,6 +15,7 @@
     {{ else }}
     <h3 class="color-standout">{{ T "No aliasses for this user." }}</h3>
     {{ end }}
+</div>
 {{ end }}
 
 

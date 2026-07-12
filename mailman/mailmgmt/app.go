@@ -10,15 +10,20 @@ import (
 	"time"
 
 	"github.com/Nigel2392/cache"
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/chooser"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
 	mailmgmt_cache "github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt/cache"
 	queries "github.com/Nigel2392/go-django/queries/src"
+	"github.com/Nigel2392/go-django/queries/src/expr"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
+	"github.com/Nigel2392/go-django/src/contrib/admin"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/except"
+	"github.com/Nigel2392/go-django/src/core/trans"
+	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/Nigel2392/go-signals"
 	"github.com/Nigel2392/goldcrest"
@@ -29,9 +34,9 @@ import (
 )
 
 const (
-	_MAILSERVER_CONTAINER_INSPECT_CACHE_KEY = "mailmgmt.MAILSERVER_INSPECT_RESULT"
-	MAILSERVER_CONTAINER_NAME               = "mailmgmt.MAILSERVER_CONTAINER_NAME"
-	MAILSERVER_CACHING_ENABLED              = "mailmgmt.MAILSERVER_CACHING_ENABLED"
+	_MAILSERVER_CONTAINER_INSPECT_CACHE_KEY = "MAILSERVER_INSPECT_RESULT"
+	MAILSERVER_CONTAINER_NAME               = "MAILSERVER_CONTAINER_NAME"
+	MAILSERVER_CACHING_ENABLED              = "MAILSERVER_CACHING_ENABLED"
 	EMAIL_REGEX                             = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
 )
 
@@ -40,6 +45,18 @@ var CONFIG *MailManagementConfig
 type MailManagementConfig struct {
 	*apps.AppConfig
 	//pool                    *shell.ExecPool
+}
+
+type DetailObject[OBJECT any, FORM forms.Form] struct {
+	Object OBJECT
+	Form   FORM
+}
+
+func (d *DetailObject[OBJECT, FORM]) String() string {
+	if s, ok := any(d.Object).(fmt.Stringer); ok {
+		return s.String()
+	}
+	return fmt.Sprintf("%v", d.Object)
 }
 
 var _, _ = queries.SignalPostModelCreate.Listen(func(s signals.Signal[queries.SignalSave], ss queries.SignalSave) (err error) {
@@ -87,6 +104,89 @@ func NewAppConfig() django.AppConfig {
 	}
 
 	CONFIG.Ready = func() error {
+		chooser.Register(&chooser.ChooserDefinition[*auth.User]{
+			ChooserKey: "mailman_user",
+			Title:      trans.S("User Chooser"),
+			Model:      &auth.User{},
+			PreviewString: func(ctx context.Context, instance *auth.User) string {
+				return instance.Email.Address
+			},
+			ListPage: &chooser.ChooserListPage[*auth.User]{
+				Fields: []string{
+					"Email",
+					"FirstName",
+					"LastName",
+					"IsActive",
+				},
+				SearchFields: []admin.SearchField{
+					{
+						Name:   "Username",
+						Lookup: expr.LOOKUP_ICONTANS,
+					},
+					{
+						Name:   "Email",
+						Lookup: expr.LOOKUP_ICONTANS,
+					},
+					{
+						Name:   "FirstName",
+						Lookup: expr.LOOKUP_ICONTANS,
+					},
+					{
+						Name:   "LastName",
+						Lookup: expr.LOOKUP_ICONTANS,
+					},
+				},
+				QuerySet: func(r *http.Request, model *auth.User) (*queries.QuerySet[*auth.User], error) {
+					var aliasId = r.URL.Query().Get("alias_id")
+					var excl = r.URL.Query().Get("exclude") != ""
+					var qs = queries.GetQuerySet(&auth.User{})
+					if aliasId != "" {
+						var throughModelQs = queries.GetQuerySet(&MailAliasUser{}).Filter("AliasID", aliasId)
+						qs = qs.Filter(expr.Q("ID__in", queries.Subquery(throughModelQs.Select("UserID"))).Not(excl)).Distinct()
+					}
+					return qs.OrderBy("Email"), nil
+				},
+			},
+		}, "mailman_user")
+
+		chooser.Register(&chooser.ChooserDefinition[*MailAlias]{
+			ChooserKey: "mailman_alias",
+			Title:      trans.S("Alias Chooser"),
+			Model:      &MailAlias{},
+			PreviewString: func(ctx context.Context, instance *MailAlias) string {
+				return instance.Source.Address
+			},
+			ListPage: &chooser.ChooserListPage[*MailAlias]{
+				Fields: []string{
+					"Source",
+					"UserCount",
+					"IsActive",
+				},
+				SearchFields: []admin.SearchField{
+					{
+						Name:   "Source",
+						Lookup: expr.LOOKUP_ICONTANS,
+					},
+				},
+				QuerySet: func(r *http.Request, model *MailAlias) (*queries.QuerySet[*MailAlias], error) {
+					var aliasId = r.URL.Query().Get("user_id")
+					var excl = r.URL.Query().Get("exclude") != ""
+					var qs = queries.
+						GetQuerySetWithContext(r.Context(), &MailAlias{}).
+						Select("ID", "Source", "IsActive").
+						GroupBy("ID").
+						Annotate("UserCount", expr.COUNT("Destination.ID"))
+
+					if aliasId != "" {
+						var throughModelQs = queries.GetQuerySet(&MailAliasUser{}).Filter("UserID", aliasId)
+						qs = qs.Filter(expr.Q("ID__in", queries.Subquery(throughModelQs.Select("AliasID"))).Not(excl)).Distinct()
+					}
+
+					return qs.OrderBy("-IsActive", "-UserCount", "Source"), nil
+				},
+			},
+		}, "mailman_alias")
+
 		goldcrest.Register(django.HOOK_SERVER_ERROR, 0, django.ServerErrorHook(func(w http.ResponseWriter, r *http.Request, app *django.Application, err except.ServerError) {
 
 		}))
@@ -104,14 +204,18 @@ func NewAppConfig() django.AppConfig {
 		//}))
 
 		emails := group.Get("/emails", views.Serve(ViewEmails), "emails")
-		emails.Get("/<<email_id>>/delete", views.Serve(ViewDeleteEmail), "delete")
-		emails.Post("/<<email_id>>/delete", views.Serve(ViewDeleteEmail))
+		emails.Get("/delete/<<email_id>>", views.Serve(ViewDeleteEmail), "delete")
+		emails.Post("/delete/<<email_id>>", views.Serve(ViewDeleteEmail))
+		emails.Get("/detail/<<email_id>>", views.Serve(ViewEmailDetail), "detail")
+		emails.Post("/detail/<<email_id>>", views.Serve(ViewEmailDetail))
 
-		htmxEmails := htmx.Get("/emails", nil, "emails")
+		htmxEmails := htmx.Any("/emails", nil, "emails")
 		htmxEmails.Get("/add", views.Serve(ViewAddEmailHtmx), "add")
 		htmxEmails.Post("/add", views.Serve(ViewAddEmailHtmx))
-		htmxEmails.Get("/<<email_id>>/update", views.Serve(ViewUpdateEmailPasswordHtmx), "update")
-		htmxEmails.Post("/<<email_id>>/update", views.Serve(ViewUpdateEmailPasswordHtmx))
+		htmxEmails.Post("/alias/remove/<<email_id>>", views.Serve(ViewEmailAliasRemove), "remove_alias")
+
+		htmxEmails.Get("/update/<<email_id>>", views.Serve(ViewUpdateEmailPasswordHtmx), "update")
+		htmxEmails.Post("/update/<<email_id>>", views.Serve(ViewUpdateEmailPasswordHtmx))
 
 		aliasses := group.Get("/aliasses", views.Serve(ViewAliasses), "aliasses")
 		aliasses.Get("/detail/<<alias_id>>", views.Serve(ViewAliasDetail), "detail")
@@ -124,12 +228,15 @@ func NewAppConfig() django.AppConfig {
 		htmxAliases.Post("/add", views.Serve(ViewAddAliasHtmx))
 		htmxAliases.Get("/add/<<email_id>>", views.Serve(ViewAddAliasToUserHtmx), "add_user")
 		htmxAliases.Post("/add/<<email_id>>", views.Serve(ViewAddAliasToUserHtmx))
+		htmxAliases.Post("/user/remove/<<alias_id>>", views.Serve(ViewAliasRemoveUser), "remove_user")
 
 		domains := group.Get("/domains", views.Serve(ViewDomains), "domains")
 		domains.Get("/add", views.Serve(ViewAddDomain), "add")
 		domains.Post("/add", views.Serve(ViewAddDomain), "add")
 		domains.Get("/delete/<<domain_id>>", views.Serve(ViewDeleteDomain), "delete")
 		domains.Post("/delete/<<domain_id>>", views.Serve(ViewDeleteDomain), "delete")
+		domains.Get("/disable/<<domain_id>>", views.Serve(ViewDeactivateDomain), "deactivate")
+		domains.Post("/disable/<<domain_id>>", views.Serve(ViewDeactivateDomain), "deactivate")
 	}
 
 	return CONFIG

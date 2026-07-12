@@ -1,0 +1,42 @@
+{{ template "detail_base" . }}
+
+{{ define "view" }}
+<div class="mailmgmt-detail-form">
+
+    <form method="POST" class="mailmgmt-detail-fields">
+        {{ csrf_field }}
+
+        {{ include .Data.object.Form.BoundForm "mailmgmt/partials/form.tmpl" }}
+
+        <a href="{{ url "mailmgmt:emails" }}" class="btn btn-standout btn-standalone m-0">
+            {{ T "Back" }}
+        </a>
+
+        <button class="btn btn-warning btn-standalone m-0">
+            {{ T "Add Alias" }}
+        </button>
+    </form>
+
+
+    <div class="mailmgmt-detail-list">
+        {{ $ctx := . }}
+        {{ $object := .Data.object.Object }}
+        {{ $aliasses := ($object.FieldDefs.Get "Aliasses").AsList }}
+        {{ if gt (len $aliasses) 0 }}
+            <p class="color-standout">{{ T "Aliasses:" }}</p>
+            <ul>
+                {{ range $idx, $alias := $aliasses }}
+                    {{ include ($ctx.Clone "Object" $object "Alias" $alias.Model) "mailmgmt/emails/partials/htmx_alias_remove.tmpl" }}
+                {{ end }}
+            </ul>
+        {{ else }}
+            <p class="color-standout">{{ T "No aliasses for this user." }}</p>
+        {{ end }}
+    </div>
+
+    <a href="{{ url "mailmgmt:emails:delete" .Data.object.Object.ID }}" class="btn btn-danger btn-standalone">
+        {{ T "Delete this User" }}
+    </a>
+
+</div>
+{{ end }}

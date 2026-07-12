@@ -131,7 +131,11 @@ table.list .list-checkbox-wrapper {
 }
 table.list .list-title {
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+}
+table.list .list-title a {
+    text-decoration: none;
+    color: var(--color-primary-accent);
 }
 table .list-checkbox-wrapper input[type="checkbox"] {
     width: 1.2rem;
@@ -484,8 +488,32 @@ table.list .column-group:hover {
     margin-bottom: 1.5rem;
 }
 
+.mailmgmt-detail-form-container {
+
+}
+.mailmgmt-detail-form {
+}
+
+.mailmgmt-detail-fields {
+    margin-bottom: 1.5rem;
+}
+
+.mailmgmt-detail-list {
+}
+
+ul.mailmgmt-detail-list,
+.mailmgmt-detail-list ul {
+    max-width: fit-content;
+}
+ul.mailmgmt-detail-list li form,
+.mailmgmt-detail-list ul li form {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
 /***** MODAL DIALOG ****/
-div[id^="modal-"] {
+div[id^="modal-add-"] {
 	/* Underlay covers entire screen. */
 	position: fixed;
 	top:0px;
@@ -506,31 +534,31 @@ div[id^="modal-"] {
 	animation-timing-function: ease;
 }
 
-div[id^="modal-"] .multi-widget {
+div[id^="modal-add-"] .multi-widget {
     display: flex;
     flex-direction: row;
 }
-div[id^="modal-"] .multi-widget .multi-widget-field:nth-child(1) {
+div[id^="modal-add-"] .multi-widget .multi-widget-field:nth-child(1) {
     display: flex;
     flex-direction:row;
 	align-items:center;
     width: 70%
 }
-div[id^="modal-"] .multi-widget .multi-widget-field:nth-child(2) {
+div[id^="modal-add-"] .multi-widget .multi-widget-field:nth-child(2) {
     max-width: 30%;
     width: 100%;
 }
-div[id^="modal-"] .multi-widget .multi-widget-field:nth-child(2) select {
+div[id^="modal-add-"] .multi-widget .multi-widget-field:nth-child(2) select {
     height: 100%;
 }
-div[id^="modal-"] .multi-widget .multi-widget-field:nth-child(1)::after {
+div[id^="modal-add-"] .multi-widget .multi-widget-field:nth-child(1)::after {
     content: "@";
     color: rgba(var(--color-primary-rgb), 0.8);
     font-size: 1.3rem;
     margin: 0 0.375rem;
 }
 
-div[id^="modal-"] > .modal-underlay {
+div[id^="modal-add-"] > .modal-underlay {
 	/* underlay takes up the entire viewport. This is only
 	required if you want to click to dismiss the popup */
 	position: absolute;
@@ -541,7 +569,7 @@ div[id^="modal-"] > .modal-underlay {
 	right: 0px;
 }
 
-div[id^="modal-"] > .modal-container {
+div[id^="modal-add-"] > .modal-container {
     position: relative;
 
 	/* Position visible dialog near the top of the window */
@@ -562,7 +590,7 @@ div[id^="modal-"] > .modal-container {
 	animation-duration:150ms;
 	animation-timing-function: ease;
 }
-div[id^="modal-"] > .modal-container > .modal-close-button {
+div[id^="modal-add-"] > .modal-container > .modal-close-button {
     border: 0;
     padding: 0;
     margin: 0;
@@ -578,7 +606,7 @@ div[id^="modal-"] > .modal-container > .modal-close-button {
     border: 0;
 }
 .mailmgmt-header,
-div[id^="modal-"] > .modal-container > .modal-header {
+div[id^="modal-add-"] > .modal-container > .modal-header {
     padding: 1rem 1rem;
     font-size: 1.5rem;
     color: var(--header-text-color);
@@ -587,14 +615,14 @@ div[id^="modal-"] > .modal-container > .modal-header {
 div[id^="modal-"] > .modal-container > .modal-content {
     padding: 1rem 1rem;
 }
-div[id^="modal-"].closing {
+div[id^="modal-add-"].closing {
 	/* Animate when closing */
 	animation-name: fadeOut;
 	animation-duration:150ms;
 	animation-timing-function: ease;
 }
 
-div[id^="modal-"].closing > .modal-container {
+div[id^="modal-add-"].closing > .modal-container {
 	/* Animate when closing */
 	animation-name: zoomOut;
 	animation-duration:150ms;

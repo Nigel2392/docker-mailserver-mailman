@@ -44,6 +44,14 @@
                     {{block "left" .}} {{template "left.tmpl" .}} {{end}}
                 </div>
                 <div class="main-center">
+
+                    <noscript>
+                        <div class="alert-container alert alert-danger">
+                            <h1>{{ T "Please enable Javascript" }}</h1>
+                            <p>{{ T "Javascript is required to properly interact with this site." }}</p>
+                        </div>
+                    </noscript>
+
                     <section class="messages" data-controller="messages">
                         {{if .Data.messages}}
                             {{template "messages" . }}

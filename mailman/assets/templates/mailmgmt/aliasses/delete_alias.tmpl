@@ -6,6 +6,7 @@
 {{ end }}
 
 {{ define "view" }}
+<div class="mailmgmt-delete-list">
     {{ $obj := (.Get "view.object") }}
     {{ $users := $obj.Destination.AsList }}
     {{ if gt (len $users) 0 }}
@@ -16,4 +17,5 @@
     {{ else }}
     <h3 class="color-standout">{{ T "No users are using this alias." }}</h3>
     {{ end }}
+</div>
 {{ end }}

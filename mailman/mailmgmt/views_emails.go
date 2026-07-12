@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/htmx"
 	queries "github.com/Nigel2392/go-django/queries/src"
 	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
 	django "github.com/Nigel2392/go-django/src"
@@ -15,6 +16,7 @@ import (
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
 	"github.com/Nigel2392/go-django/src/core/errs"
+	"github.com/Nigel2392/go-django/src/core/logger"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms"
 	"github.com/Nigel2392/go-django/src/forms/fields"
@@ -68,7 +70,9 @@ var ViewEmails = &list.View[*auth.User]{
 			"list-form",
 			nil,
 			nil,
-			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *auth.User) string { return "" }),
+			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, u *auth.User) string {
+				return django.Reverse("mailmgmt:emails:detail", u.ID)
+			}),
 			map[string]any{
 				"data-table-list-target": "selectAll",
 				"data-action":            "change->table-list#toggleAllCheckboxes",
@@ -146,7 +150,203 @@ var ViewEmails = &list.View[*auth.User]{
 	},
 }
 
+var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseForm]]{
+	URLArgName: "email_id",
+	BaseView: views.BaseView{
+		BaseTemplateKey: "main",
+		TemplateName: []string{
+			"mailmgmt/base/detail_base.tmpl",
+			"mailmgmt/emails/detail.tmpl",
+		},
+		AllowedMethods: []string{"GET", "POST"},
+	},
+	GetObjectFn: func(req *http.Request, urlArg string) (*DetailObject[*auth.User, *forms.BaseForm], error) {
+		var row, err = queries.
+			GetQuerySetWithContext(req.Context(), &auth.User{}).
+			Select("*").
+			Preload("Aliasses").
+			Filter("ID", urlArg).
+			Get()
+		if err != nil {
+			return nil, err
+		}
+
+		var obj = &DetailObject[*auth.User, *forms.BaseForm]{
+			Object: row.Object,
+			Form: newSimpleChooserForm(req.Context(), chooserFormOptions{
+				urlParam:   "user_id",
+				urlId:      row.Object.ID,
+				chooserObj: &MailAlias{},
+				chooserKey: "mailman_alias",
+				formName:   "alias",
+				formLabel:  trans.S("Alias"),
+				formHelp:   trans.S("Select an alias to assign this user to."),
+			}),
+		}
+
+		return obj, nil
+	},
+	PostMethod: func(d *views.DetailView[*DetailObject[*auth.User, *forms.BaseForm]], w http.ResponseWriter, r *http.Request, bound views.View) (http.ResponseWriter, *http.Request) {
+		var bv = bound.(*views.BoundDetailView[*DetailObject[*auth.User, *forms.BaseForm]])
+		var form = forms.Initialize(
+			bv.Object.Form,
+			forms.WithRequestData(http.MethodPost, r),
+		)
+
+		if !forms.IsValid(r.Context(), form) {
+			messages.Error(r, trans.T(r.Context(), "Please correctly fill out the form, it is not valid."))
+			return w, r
+		}
+
+		var aliasObj, ok = form.CleanedData()["alias"]
+		if !ok {
+			messages.Error(r, "Error retrieving form data...")
+			return w, r
+		}
+
+		aliasRow, err := queries.GetQuerySet(&MailAlias{}).
+			Filter("ID", aliasObj).
+			Get()
+		if err != nil {
+			logger.Errorf("Error while retrieving alias: %v", err)
+			messages.Error(r, "Internal Server Error...")
+			return w, r
+		}
+
+		var userDefs = bv.Object.Object.FieldDefs()
+		var userAlias = userDefs.Get("Aliasses").(*queries.RelM2M[attrs.Definer, attrs.Definer])
+		var aliasQS = userAlias.Objects()
+		exists, err := aliasQS.Filter("ID", aliasRow.Object.ID).Exists()
+		if err != nil {
+			logger.Errorf("Error while checking if user exists in alias queryset: %v", err)
+			messages.Error(r, "Internal Server Error...")
+			return w, r
+		}
+
+		if exists {
+			messages.Error(r, fmt.Sprintf(
+				"%s is already assigned to %s",
+				aliasRow.Object.Source.Address,
+				bv.Object.Object.Email.Address,
+			))
+			return w, r
+		}
+
+		created, err := aliasQS.AddTarget(aliasRow.Object)
+		if err != nil {
+			logger.Errorf("Error while adding alias to user: %v", err)
+			messages.Error(r, "Internal Server Error...")
+			return w, r
+		}
+
+		if !created {
+			logger.Errorf(
+				"Added alias %q to user %q, but was not created",
+				aliasRow.Object.Source.Address,
+				bv.Object.Object.Email.Address,
+			)
+		}
+
+		http.Redirect(w, r, r.URL.Path, http.StatusFound)
+		return nil, nil
+	},
+}
+
+var ViewEmailAliasRemove = &views.DetailView[*auth.User]{
+	URLArgName: "email_id",
+	BaseView: views.BaseView{
+		TemplateName: []string{
+			"mailmgmt/emails/partials/htmx_alias_remove.tmpl",
+		},
+		AllowedMethods: []string{"GET", "POST"},
+	},
+	GetObjectFn: func(req *http.Request, urlArg string) (*auth.User, error) {
+		var row, err = queries.
+			GetQuerySetWithContext(req.Context(), &auth.User{}).
+			Select("*").
+			Filter("ID", urlArg).
+			Get()
+		if err != nil {
+			return nil, err
+		}
+		return row.Object, nil
+	},
+	PostMethod: func(d *views.DetailView[*auth.User], w http.ResponseWriter, r *http.Request, bound views.View) (http.ResponseWriter, *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			logger.Errorf("Error while parsing form: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, nil
+		}
+
+		var id, err = strconv.Atoi(r.PostForm.Get("confirm"))
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, nil
+		}
+
+		aliasRow, err := queries.GetQuerySet(&MailAlias{}).
+			Filter("ID", id).
+			Get()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return w, r
+		}
+
+		var (
+			bv          = bound.(*views.BoundDetailView[*auth.User])
+			userDefs    = bv.Object.FieldDefs()
+			userAlias   = userDefs.Get("Aliasses").(*queries.RelM2M[attrs.Definer, attrs.Definer])
+			userAliasQS = userAlias.Objects()
+		)
+
+		bv.Context.Set("Alias", aliasRow.Object)
+		bv.Context.Set("Object", bv.Object)
+
+		exists, err := userAliasQS.Filter("ID", id).Exists()
+		if err != nil {
+			logger.Errorf("Error while checking if user exists in alias queryset: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, nil
+		}
+
+		if !exists {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, nil
+		}
+
+		if _, err := userAliasQS.RemoveTargets(&MailAlias{ID: uint64(id)}); err != nil {
+			logger.Errorf("Error while removing user from alias: %v", err)
+			return w, r
+		}
+
+		if !htmx.Is(r) {
+			http.Redirect(
+				w, r,
+				django.Reverse("mailmgmt:emails:detail", bv.Object.ID),
+				http.StatusFound,
+			)
+			return nil, nil
+		}
+
+		if len(userAlias.AsList()) == 0 {
+			htmx.NewResponse(w).Retarget(".mailmgmt-detail-list")
+			fmt.Fprintf(w,
+				`<div class="mailmgmt-detail-list"><p class="color-standout">%s</p></div>`,
+				trans.T(r.Context(), "No aliasses for this user."),
+			)
+		}
+
+		w.Write([]byte{})
+		return nil, nil
+	},
+}
+
 var _, _ = auth.SignalPreValidateLogonField.Listen(func(s signals.Signal[*auth.FormSignal], fs *auth.FormSignal) error {
+	var _, ok = fs.CleanedData["emailDomain"]
+	if !ok {
+		return nil
+	}
+
 	var emailValue, err = getCleanedEmail(fs.CleanedData, "emailDomain")
 	if err != nil {
 		return errs.NewValidationError("emailDomain", err)
