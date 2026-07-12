@@ -10,16 +10,44 @@ import (
 	"github.com/Nigel2392/go-django/queries/src/expr"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
-	"github.com/Nigel2392/go-django/src/contrib/auth/users"
 	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/core/attrs"
 	"github.com/Nigel2392/go-django/src/core/ctx"
+	"github.com/Nigel2392/go-django/src/core/logger"
 	"github.com/Nigel2392/go-django/src/core/trans"
 	"github.com/Nigel2392/go-django/src/forms/modelforms"
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/Nigel2392/go-django/src/views/list"
 	"github.com/Nigel2392/mux"
+	"github.com/Nigel2392/mux/middleware/authentication"
+	"github.com/justinas/nosurf"
 )
+
+type domainBooleanColumn struct {
+	list.ListColumn[*Domain]
+}
+
+func (d *domainBooleanColumn) Attributes(r *http.Request, defs attrs.Definitions, row *Domain, colIndex, colCount int) map[string]any {
+
+	if row.IsActive {
+		return map[string]any{
+			"class":       "domain-list-activity-button",
+			"hx-get":      django.Reverse("mailmgmt:domains:disable", row.ID),
+			"hx-target":   ".main-center",
+			"hx-select":   ".main-center",
+			"hx-swap":     "outerHTML",
+			"hx-push-url": "true",
+		}
+	}
+
+	return map[string]any{
+		"class":      "domain-list-activity-button",
+		"hx-post":    django.Reverse("mailmgmt:htmx:domains:activate", row.ID),
+		"hx-target":  "closest .list-column",
+		"hx-swap":    "outerHTML",
+		"hx-headers": fmt.Sprintf(`{"X-CSRF-Token": "%s"}`, nosurf.Token(r)),
+	}
+}
 
 var ViewDomains = &list.View[*Domain]{
 	AllowedMethods:  []string{http.MethodGet},
@@ -47,20 +75,20 @@ var ViewDomains = &list.View[*Domain]{
 		return c, nil
 	},
 	TitleFieldColumn: func(col list.ListColumn[*Domain]) list.ListColumn[*Domain] {
-		return list.RowSelectColumn(
-			"list-form",
-			nil,
-			nil,
-			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *Domain) string { return "" }),
-			map[string]any{
-				"data-table-list-target": "selectAll",
-				"data-action":            "change->table-list#toggleAllCheckboxes",
-			},
-			map[string]any{
-				"data-table-list-target": "checkbox",
-				"data-action":            "change->table-list#updateSelectAll",
-			},
-		)
+		// return list.RowSelectColumn(
+		// "list-form",
+		// nil,
+		// nil,
+		return list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, _ *Domain) string { return "" }) //,
+		// map[string]any{
+		// "data-table-list-target": "selectAll",
+		// "data-action":            "change->table-list#toggleAllCheckboxes",
+		// },
+		// map[string]any{
+		// "data-table-list-target": "checkbox",
+		// "data-action":            "change->table-list#updateSelectAll",
+		// },
+		// )
 	},
 	ListColumns: []list.ListColumn[*Domain]{
 		list.Column[*Domain](
@@ -71,10 +99,10 @@ var ViewDomains = &list.View[*Domain]{
 			trans.S("Domain"),
 			"Domain",
 		),
-		list.BooleanFieldColumn[*Domain](
+		&domainBooleanColumn{list.BooleanFieldColumn[*Domain](
 			trans.S("IsActive"),
 			"IsActive",
-		),
+		)},
 		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *Domain) template.HTML {
 			var html = `<div class="mailmgmt-list-item-actions">
                 <a href="%s" class="mailmgmt-action-button mailmgmt-action-delete">
@@ -122,6 +150,36 @@ var ViewAddDomain = &views.FormView[*modelforms.BaseModelForm[*Domain]]{
 	},
 }
 
+var ViewActivateDomain = &views.DetailView[*Domain]{
+	URLArgName: "domain_id",
+	BaseView: views.BaseView{
+		TemplateName:   "mailmgmt/domains/partials/active_status_yes.tmpl",
+		AllowedMethods: []string{"GET", "POST"},
+	},
+	GetObjectFn: func(req *http.Request, urlArg string) (*Domain, error) {
+		var row, err = queries.
+			GetQuerySetWithContext(req.Context(), &Domain{}).
+			Select("*").
+			Filter("ID", urlArg).
+			Get()
+		return row.Object, err
+	},
+	PostMethod: func(d *views.DetailView[*Domain], w http.ResponseWriter, r *http.Request, bound views.View) (http.ResponseWriter, *http.Request) {
+		bv := bound.(*views.BoundDetailView[*Domain])
+		_, err := queries.
+			GetQuerySet(&Domain{}).
+			Select("IsActive").
+			Filter("ID", bv.Object.ID).
+			BulkUpdate(expr.As("IsActive", expr.V(true)))
+		if err != nil {
+			logger.Errorf("Error while updating domain 'IsActive': %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, nil
+		}
+		return w, r
+	},
+}
+
 var ViewDeleteDomain = &DeleteView[*Domain]{
 	BaseKey: "main",
 	Template: []string{
@@ -146,7 +204,6 @@ var ViewDeleteDomain = &DeleteView[*Domain]{
 		var domainEmailPart = fmt.Sprintf("@%s", bdv.Object.Domain)
 		users, err := queries.GetQuerySet(&auth.User{}).
 			Filter("Email__iendswith", domainEmailPart).
-			Filter("IsActive", true).
 			All()
 		if err != nil {
 			return nil, err
@@ -154,7 +211,6 @@ var ViewDeleteDomain = &DeleteView[*Domain]{
 
 		aliasses, err := queries.GetQuerySet(&MailAlias{}).
 			Filter("Source__iendswith", domainEmailPart).
-			Filter("IsActive", true).
 			All()
 		if err != nil {
 			return nil, err
@@ -178,6 +234,7 @@ var ViewDeleteDomain = &DeleteView[*Domain]{
 		_, err = queries.GetQuerySetWithContext(qs.Context(), &auth.User{}).
 			Select("IsActive").
 			Filter("Email__iendswith", domainEmailPart).
+			Filter(expr.Q("ID", authentication.Retrieve(r)).Not(true)).
 			Filter("IsActive", true).
 			BulkUpdate(map[string]expr.Expression{
 				"IsActive": expr.V(false),
@@ -209,7 +266,7 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 	BaseKey: "main",
 	Template: []string{
 		"mailmgmt/base/delete_form.tmpl",
-		"mailmgmt/domains/delete_domain.tmpl",
+		"mailmgmt/domains/deactivate_domain.tmpl",
 	},
 	NextURL: "mailmgmt:domains",
 	GetObject: func(bdv *BoundDeleteView[*Domain], r *http.Request) (*Domain, error) {
@@ -220,8 +277,10 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 
 		return row.Object, err
 	},
-	ExtraMessage: func(bdv *BoundDeleteView[*Domain], r *http.Request) []string {
+	Message: func(bdv *BoundDeleteView[*Domain], r *http.Request) []string {
 		return []string{
+			trans.T(r.Context(), "Careful!"),
+			trans.T(r.Context(), "Are you sure you want to deactivate this domain?"),
 			trans.T(r.Context(), "It will also set all (below) listed aliasses and users to inactive."),
 		}
 	},
@@ -260,8 +319,9 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 		_, err = queries.GetQuerySetWithContext(qs.Context(), &auth.User{}).
 			Select("IsActive").
 			Filter("Email__iendswith", domainEmailPart).
+			Filter(expr.Q("ID", authentication.Retrieve(r)).Not(true)).
 			Filter("IsActive", true).
-			BulkUpdate(&auth.User{Base: users.Base{IsActive: false}})
+			BulkUpdate(expr.As("IsActive", expr.V(false)))
 		if err != nil {
 			return err
 		}
@@ -270,7 +330,7 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 			Select("IsActive").
 			Filter("Source__iendswith", domainEmailPart).
 			Filter("IsActive", true).
-			BulkUpdate(&MailAlias{IsActive: false})
+			BulkUpdate(expr.As("IsActive", expr.V(false)))
 		if err != nil {
 			return err
 		}

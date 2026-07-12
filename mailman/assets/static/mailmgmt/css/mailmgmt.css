@@ -500,7 +500,9 @@ table.list .column-group:hover {
 
 .mailmgmt-detail-list {
 }
-
+.domain-list-activity-button > * {
+    cursor: pointer;
+}
 ul.mailmgmt-detail-list,
 .mailmgmt-detail-list ul {
     max-width: fit-content;

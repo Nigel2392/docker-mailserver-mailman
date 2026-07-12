@@ -35,12 +35,12 @@
                     <label for="confirm_id" class="form-label">{{ T "Confirm" }}</label>
                     <input type="text" name="confirm" id="confirm_id" class="form-control"/>
                     <div class="form-help">
-                        {{ T "Please write %q in the above textbox to delete this object." (.Get "view.confirm") }}
+                        {{ block "confirm_text" . }}{{ T "Please write %q in the above textbox to delete this object." (.Get "view.confirm") }}{{ end }}
                     </div>
                 </div>
             
                 <button class="btn btn-danger btn-standalone m-0">
-                    {{ T "Delete" }}
+                    {{ block "button_text" . }}{{ T "Delete" }}{{ end }}
                 </button>
 
                 <a href="{{.Data.NextURL}}" class="btn btn-standout btn-standalone m-0">{{ T "Back" }}</a>

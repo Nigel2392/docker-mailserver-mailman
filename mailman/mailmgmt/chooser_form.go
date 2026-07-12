@@ -38,7 +38,7 @@ func newSimpleChooserForm(ctx context.Context, opts chooserFormOptions) *forms.B
 	}
 
 	form.AddField(opts.formName, fields.CharField(
-		fields.Required(true),
+		fields.Required(false),
 		fields.Label(opts.formLabel),
 		fields.HelpText(opts.formHelp),
 		fields.Widget(chooser.NewChooserWidget(

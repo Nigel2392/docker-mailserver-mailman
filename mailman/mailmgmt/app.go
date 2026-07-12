@@ -235,8 +235,11 @@ func NewAppConfig() django.AppConfig {
 		domains.Post("/add", views.Serve(ViewAddDomain), "add")
 		domains.Get("/delete/<<domain_id>>", views.Serve(ViewDeleteDomain), "delete")
 		domains.Post("/delete/<<domain_id>>", views.Serve(ViewDeleteDomain), "delete")
-		domains.Get("/disable/<<domain_id>>", views.Serve(ViewDeactivateDomain), "deactivate")
-		domains.Post("/disable/<<domain_id>>", views.Serve(ViewDeactivateDomain), "deactivate")
+		domains.Get("/disable/<<domain_id>>", views.Serve(ViewDeactivateDomain), "disable")
+		domains.Post("/disable/<<domain_id>>", views.Serve(ViewDeactivateDomain), "disable")
+
+		htmxDomains := htmx.Get("/domains", nil, "domains")
+		htmxDomains.Post("/activate/<<domain_id>>", views.Serve(ViewActivateDomain), "activate")
 	}
 
 	return CONFIG

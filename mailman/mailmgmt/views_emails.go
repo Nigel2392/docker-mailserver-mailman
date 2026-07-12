@@ -9,6 +9,7 @@ import (
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/htmx"
 	queries "github.com/Nigel2392/go-django/queries/src"
 	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
+	"github.com/Nigel2392/go-django/queries/src/expr"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	autherrors "github.com/Nigel2392/go-django/src/contrib/auth/auth_errors"
@@ -66,22 +67,22 @@ var ViewEmails = &list.View[*auth.User]{
 		return c, nil
 	},
 	TitleFieldColumn: func(col list.ListColumn[*auth.User]) list.ListColumn[*auth.User] {
-		return list.RowSelectColumn(
-			"list-form",
-			nil,
-			nil,
-			list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, u *auth.User) string {
-				return django.Reverse("mailmgmt:emails:detail", u.ID)
-			}),
-			map[string]any{
-				"data-table-list-target": "selectAll",
-				"data-action":            "change->table-list#toggleAllCheckboxes",
-			},
-			map[string]any{
-				"data-table-list-target": "checkbox",
-				"data-action":            "change->table-list#updateSelectAll",
-			},
-		)
+		// return list.RowSelectColumn(
+		// "list-form",
+		// nil,
+		// nil,
+		return list.TitleFieldColumn(col, func(_ *http.Request, _ attrs.Definitions, u *auth.User) string {
+			return django.Reverse("mailmgmt:emails:detail", u.ID)
+		}) //,
+		//map[string]any{
+		//	"data-table-list-target": "selectAll",
+		//	"data-action":            "change->table-list#toggleAllCheckboxes",
+		//},
+		//map[string]any{
+		//	"data-table-list-target": "checkbox",
+		//	"data-action":            "change->table-list#updateSelectAll",
+		//},
+		// )
 	},
 	ListColumns: []list.ListColumn[*auth.User]{
 		list.Column[*auth.User](
@@ -181,6 +182,16 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 				formName:   "alias",
 				formLabel:  trans.S("Alias"),
 				formHelp:   trans.S("Select an alias to assign this user to."),
+				formOpts: []func(forms.Form){
+					forms.WithFields(
+						fields.BooleanField(
+							fields.Name("is_active"),
+							fields.Label(trans.S("Is Active")),
+							fields.HelpText(trans.S("Wether this user can send and receive e-mails.")),
+							fields.Default(row.Object.IsActive),
+						),
+					),
+				},
 			}),
 		}
 
@@ -198,53 +209,79 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 			return w, r
 		}
 
-		var aliasObj, ok = form.CleanedData()["alias"]
+		if !form.HasChanged() {
+			logger.Error("The form was not changed, but it was submitted.")
+			messages.Error(r, trans.T(r.Context(), "The form was not changed."))
+			return w, r
+		}
+
+		var cleaned = form.CleanedData()
+		var aliasObj, ok = cleaned["alias"]
+		if ok && !fields.IsZero(aliasObj) {
+			aliasRow, err := queries.GetQuerySet(&MailAlias{}).
+				Filter("ID", aliasObj).
+				Get()
+			if err != nil {
+				logger.Errorf("Error while retrieving alias: %v", err)
+				messages.Error(r, "Internal Server Error...")
+				return w, r
+			}
+
+			var userDefs = bv.Object.Object.FieldDefs()
+			var userAlias = userDefs.Get("Aliasses").(*queries.RelM2M[attrs.Definer, attrs.Definer])
+			var aliasQS = userAlias.Objects()
+			exists, err := aliasQS.Filter("ID", aliasRow.Object.ID).Exists()
+			if err != nil {
+				logger.Errorf("Error while checking if user exists in alias queryset: %v", err)
+				messages.Error(r, "Internal Server Error...")
+				return w, r
+			}
+
+			if exists {
+				messages.Error(r, fmt.Sprintf(
+					"%s is already assigned to %s",
+					aliasRow.Object.Source.Address,
+					bv.Object.Object.Email.Address,
+				))
+				return w, r
+			}
+
+			created, err := aliasQS.AddTarget(aliasRow.Object)
+			if err != nil {
+				logger.Errorf("Error while adding alias to user: %v", err)
+				messages.Error(r, "Internal Server Error...")
+				return w, r
+			}
+
+			if !created {
+				logger.Errorf(
+					"Added alias %q to user %q, but was not created",
+					aliasRow.Object.Source.Address,
+					bv.Object.Object.Email.Address,
+				)
+			}
+		}
+
+		isActive, ok := cleaned["is_active"].(bool)
 		if !ok {
-			messages.Error(r, "Error retrieving form data...")
-			return w, r
-		}
-
-		aliasRow, err := queries.GetQuerySet(&MailAlias{}).
-			Filter("ID", aliasObj).
-			Get()
-		if err != nil {
-			logger.Errorf("Error while retrieving alias: %v", err)
-			messages.Error(r, "Internal Server Error...")
-			return w, r
-		}
-
-		var userDefs = bv.Object.Object.FieldDefs()
-		var userAlias = userDefs.Get("Aliasses").(*queries.RelM2M[attrs.Definer, attrs.Definer])
-		var aliasQS = userAlias.Objects()
-		exists, err := aliasQS.Filter("ID", aliasRow.Object.ID).Exists()
-		if err != nil {
-			logger.Errorf("Error while checking if user exists in alias queryset: %v", err)
-			messages.Error(r, "Internal Server Error...")
-			return w, r
-		}
-
-		if exists {
-			messages.Error(r, fmt.Sprintf(
-				"%s is already assigned to %s",
-				aliasRow.Object.Source.Address,
-				bv.Object.Object.Email.Address,
-			))
-			return w, r
-		}
-
-		created, err := aliasQS.AddTarget(aliasRow.Object)
-		if err != nil {
-			logger.Errorf("Error while adding alias to user: %v", err)
-			messages.Error(r, "Internal Server Error...")
-			return w, r
-		}
-
-		if !created {
 			logger.Errorf(
-				"Added alias %q to user %q, but was not created",
-				aliasRow.Object.Source.Address,
-				bv.Object.Object.Email.Address,
+				"Type Mismatch for 'is_active' variable: %T",
+				cleaned["is_active"],
 			)
+		}
+
+		if isActive != bv.Object.Object.IsActive {
+			_, err := queries.GetQuerySet(&auth.User{}).
+				ExplicitSave().
+				Select("IsActive").
+				Filter("ID", bv.Object.Object.ID).
+				BulkUpdate(expr.As("IsActive", expr.Value(isActive)))
+			if err != nil {
+				logger.Errorf(
+					"Error while updating active status for user %q: %v",
+					bv.Object.Object.Email.Address, err,
+				)
+			}
 		}
 
 		http.Redirect(w, r, r.URL.Path, http.StatusFound)

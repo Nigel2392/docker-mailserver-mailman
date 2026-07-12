@@ -98,6 +98,10 @@ func (w *ChooserWidget) ValueToGo(value interface{}) (interface{}, error) {
 		return value, nil
 	}
 
+	if fields.IsZero(value) {
+		return nil, nil
+	}
+
 	var newObj = attrs.NewObject[attrs.Definer](w.Model)
 	var defs = newObj.FieldDefs()
 	var prim = defs.Primary()
