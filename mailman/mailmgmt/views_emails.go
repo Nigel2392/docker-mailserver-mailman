@@ -50,8 +50,18 @@ var ViewEmails = &list.View[*auth.User]{
 		}}}
 	},
 	QuerySet: func(r *http.Request) *queries.QuerySet[*auth.User] {
-		return queries.
-			GetQuerySetWithContext(r.Context(), &auth.User{}).
+		var qs = queries.GetQuerySetWithContext(r.Context(), &auth.User{})
+
+		queryValue := r.URL.Query().Get("search")
+		if queryValue != "" {
+			qs = qs.Filter(expr.Or(
+				expr.Q("Email__icontains", queryValue),
+				expr.Q("FirstName", queryValue),
+				expr.Q("LastName", queryValue),
+			))
+		}
+
+		return qs.
 			Select("*", "Profile.*").
 			OrderBy("Email")
 	},

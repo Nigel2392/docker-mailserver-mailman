@@ -63,6 +63,19 @@ var ViewDomains = &list.View[*Domain]{
 			return w, r
 		}}}
 	},
+	QuerySet: func(r *http.Request) *queries.QuerySet[*Domain] {
+		qs := queries.GetQuerySetWithContext(r.Context(), &Domain{})
+
+		queryValue := r.URL.Query().Get("search")
+		if queryValue != "" {
+			qs = qs.Filter(expr.Or(
+				expr.Q("Name__icontains", queryValue),
+				expr.Q("Domain__icontains", queryValue),
+			))
+		}
+
+		return qs.OrderBy("-IsActive", "Name")
+	},
 	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*Domain]) (ctx.Context, error) {
 		c := ctx.RequestContext(r)
 		pageValue, _ := strconv.Atoi(r.URL.Query().Get("page"))

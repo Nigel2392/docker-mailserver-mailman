@@ -44,8 +44,14 @@ var ViewAliasses = &list.View[*MailAlias]{
 		}}}
 	},
 	QuerySet: func(r *http.Request) *queries.QuerySet[*MailAlias] {
-		return queries.
-			GetQuerySetWithContext(r.Context(), &MailAlias{}).
+		qs := queries.GetQuerySetWithContext(r.Context(), &MailAlias{})
+
+		queryValue := r.URL.Query().Get("search")
+		if queryValue != "" {
+			qs = qs.Filter("Source__icontains", queryValue)
+		}
+
+		return qs.
 			Select("ID", "Source", "IsActive").
 			GroupBy("ID").
 			Annotate("UserCount", expr.COUNT("Destination.ID")). // Count the joined user IDs
