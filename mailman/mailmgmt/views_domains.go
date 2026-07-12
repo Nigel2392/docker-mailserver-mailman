@@ -31,21 +31,33 @@ func (d *domainBooleanColumn) Attributes(r *http.Request, defs attrs.Definitions
 
 	if row.IsActive {
 		return map[string]any{
-			"class":       "domain-list-activity-button",
-			"hx-get":      django.Reverse("mailmgmt:domains:disable", row.ID),
-			"hx-target":   ".main-center",
-			"hx-select":   ".main-center",
-			"hx-swap":     "outerHTML",
-			"hx-push-url": "true",
+			"class":                        "domain-list-activity-button w-10",
+			"hx-get":                       django.Reverse("mailmgmt:domains:disable", row.ID),
+			"hx-target":                    ".main-center",
+			"hx-select":                    ".main-center",
+			"hx-swap":                      "outerHTML",
+			"hx-push-url":                  "true",
+			"data-controller":              "tooltip",
+			"data-tooltip-placement-value": "bottom",
+			"data-tooltip-offset-value":    "[0, -10]",
+			"data-tooltip-content-value": trans.T(
+				r.Context(), "Click to disable this domain",
+			),
 		}
 	}
 
 	return map[string]any{
-		"class":      "domain-list-activity-button",
-		"hx-post":    django.Reverse("mailmgmt:htmx:domains:activate", row.ID),
-		"hx-target":  "closest .list-column",
-		"hx-swap":    "outerHTML",
-		"hx-headers": fmt.Sprintf(`{"X-CSRF-Token": "%s"}`, nosurf.Token(r)),
+		"class":                        "domain-list-activity-button w-10",
+		"hx-post":                      django.Reverse("mailmgmt:htmx:domains:activate", row.ID),
+		"hx-target":                    "closest .list-column",
+		"hx-swap":                      "outerHTML",
+		"hx-headers":                   fmt.Sprintf(`{"X-CSRF-Token": "%s"}`, nosurf.Token(r)),
+		"data-controller":              "tooltip",
+		"data-tooltip-placement-value": "bottom",
+		"data-tooltip-offset-value":    "[0, -10]",
+		"data-tooltip-content-value": trans.T(
+			r.Context(), "Click to enable this domain",
+		),
 	}
 }
 
@@ -301,7 +313,6 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 		var domainEmailPart = fmt.Sprintf("@%s", bdv.Object.Domain)
 		users, err := queries.GetQuerySet(&auth.User{}).
 			Filter("Email__iendswith", domainEmailPart).
-			Filter("IsActive", true).
 			All()
 		if err != nil {
 			return nil, err
@@ -309,7 +320,6 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 
 		aliasses, err := queries.GetQuerySet(&MailAlias{}).
 			Filter("Source__iendswith", domainEmailPart).
-			Filter("IsActive", true).
 			All()
 		if err != nil {
 			return nil, err

@@ -111,6 +111,10 @@ var ViewEmails = &list.View[*auth.User]{
 			),
 			"FirstName",
 		),
+		list.BooleanFieldColumn[*auth.User](
+			trans.S("IsActive"),
+			"IsActive",
+		),
 		list.ChangeColumnType[*auth.User](
 			list.FuncColumn(
 				trans.S("Quota"),
@@ -123,10 +127,6 @@ var ViewEmails = &list.View[*auth.User]{
 				},
 			),
 			"Profile.Bytes",
-		),
-		list.BooleanFieldColumn[*auth.User](
-			trans.S("IsActive"),
-			"IsActive",
 		),
 		//	list.DateTimeFieldColumn[*auth.User](
 		//		trans.DEFAULT_TIME_FORMAT,
