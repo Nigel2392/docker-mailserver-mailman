@@ -39,11 +39,11 @@
                     </div>
                 </div>
             
+                <a href="{{.Data.NextURL}}" class="btn btn-standout btn-standalone m-0">{{ T "Back" }}</a>
+                
                 <button class="btn btn-danger btn-standalone m-0">
                     {{ block "button_text" . }}{{ T "Delete" }}{{ end }}
                 </button>
-
-                <a href="{{.Data.NextURL}}" class="btn btn-standout btn-standalone m-0">{{ T "Back" }}</a>
             </form>
 
         </div>

@@ -1,19 +1,14 @@
 package sieve
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
 	"html/template"
 	"io"
-	"time"
 
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	queries "github.com/Nigel2392/go-django/queries/src"
 	django "github.com/Nigel2392/go-django/src"
-	"github.com/moby/moby/client"
 )
 
 type SieveConfigData struct {
@@ -62,7 +57,7 @@ func Query(ctx context.Context) (*SieveConfigData, error) {
 	return config, nil
 }
 
-func Compile(ctx context.Context, config *SieveConfigData, tarDest io.Writer) error {
+func Compile(ctx context.Context, config *SieveConfigData, dest io.Writer) error {
 	if !_app._enabled {
 		return ErrAppNotEnabled
 	}
@@ -80,28 +75,8 @@ func Compile(ctx context.Context, config *SieveConfigData, tarDest io.Writer) er
 		return fmt.Errorf("failed to parse sieve template: %w", err)
 	}
 
-	var scriptBuffer bytes.Buffer
-	if err := tmpl.Execute(&scriptBuffer, config); err != nil {
+	if err := tmpl.Execute(dest, config); err != nil {
 		return fmt.Errorf("failed to execute sieve template: %w", err)
-	}
-
-	tarWriter := tar.NewWriter(tarDest)
-	scriptBytes := scriptBuffer.Bytes()
-	header := &tar.Header{
-		Name:    "before.dovecot.sieve",
-		Mode:    0644,
-		Size:    int64(len(scriptBytes)),
-		ModTime: time.Now(),
-	}
-
-	if err := tarWriter.WriteHeader(header); err != nil {
-		return fmt.Errorf("failed to write tar header: %w", err)
-	}
-	if _, err := tarWriter.Write(scriptBytes); err != nil {
-		return fmt.Errorf("failed to write tar body: %w", err)
-	}
-	if err := tarWriter.Close(); err != nil {
-		return fmt.Errorf("failed to close tar writer: %w", err)
 	}
 
 	return nil
@@ -119,19 +94,8 @@ func Upload(ctx context.Context, config *SieveConfigData) error {
 		return err
 	}
 
-	mailserver, err := mailmgmt.MailServer(ctx, false)
-	if err != nil {
+	if err := UploadSieveToMailserver(ctx, &b); err != nil {
 		return err
-	}
-
-	opts := client.CopyToContainerOptions{
-		DestinationPath: "/tmp/docker-mailserver",
-		Content:         &b,
-	}
-
-	_, err = docker.Docker().CopyToContainer(ctx, mailserver.ID, opts)
-	if err != nil {
-		return fmt.Errorf("failed to copy sieve script: %w", err)
 	}
 
 	return nil

@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	queries "github.com/Nigel2392/go-django/queries/src"
+	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/contrib/auth"
 	"github.com/go-ldap/ldap/v3"
 	"github.com/vjeantet/goldap/message"
@@ -66,7 +66,11 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), django.ConfigGet(
+		django.Global.Settings,
+		APPVAR_LDAP_TIMEOUT,
+		DEFAULT_LDAP_TIMEOUT,
+	))
 	defer cancel()
 
 	identityRDN := parsedDN.RDNs[0].Attributes[0]
@@ -103,7 +107,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	}
 
 	if err := u.Password.Check(password); err != nil {
-		log.Printf("[BIND] Invalid password for user: %s", u.Username)
+		log.Printf("[BIND] Invalid password for user: %s: %q", u.Username, password)
 		res := ldapserver.NewBindResponse(ldapserver.LDAPResultInvalidCredentials)
 		w.Write(res)
 		return
@@ -139,7 +143,11 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 	log.Printf("[SEARCH] Base: %s | Params: %v", baseDN, params)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), django.ConfigGet(
+		django.Global.Settings,
+		APPVAR_LDAP_TIMEOUT,
+		DEFAULT_LDAP_TIMEOUT,
+	))
 	defer cancel()
 
 	// 2. Route the request based on the parameters Postfix sent
@@ -203,15 +211,24 @@ func searchDomain(ctx context.Context, w ldapserver.ResponseWriter, baseDN, doma
 	}
 
 	domain := domainRow.Object
-	entry := ldapserver.NewSearchResultEntry("dc=" + domain.Domain + "," + baseDN)
+	entry := ldapserver.NewSearchResultEntry("cn=" + domain.Domain + "," + baseDN)
+
 	entry.AddAttribute(
 		message.AttributeDescription("objectClass"),
-		message.AttributeValue("domain"),
+		message.AttributeValue("top"),
+		message.AttributeValue("domainRelatedObject"),
 	)
+
 	entry.AddAttribute(
-		message.AttributeDescription("dc"),
+		message.AttributeDescription("cn"),
 		message.AttributeValue(domain.Domain),
 	)
+
+	entry.AddAttribute(
+		message.AttributeDescription("associatedDomain"),
+		message.AttributeValue(domain.Domain),
+	)
+
 	entry.AddAttribute(
 		message.AttributeDescription("mailEnabled"),
 		message.AttributeValue("TRUE"),
@@ -273,45 +290,6 @@ func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email 
 	w.Write(entry)
 }
 
-// walkASTForAttribute recursively evaluates the binary AST constructed
-// by vjeantet/goldap. It completely bypasses string serialization issues.
-func walkASTForAttribute(f message.Filter, targetAttr string) string {
-	switch ft := f.(type) {
-	case message.FilterEqualityMatch:
-		// Base case: (mail=nigel@example.com)
-		if strings.EqualFold(string(ft.AttributeDesc()), targetAttr) {
-			return string(ft.AssertionValue())
-		}
-	case message.FilterAnd:
-		// Logical AND: (&(objectClass=user)(mail=nigel@...))
-		for _, subFilter := range ft {
-			if val := walkASTForAttribute(subFilter, targetAttr); val != "" {
-				return val
-			}
-		}
-	case message.FilterOr:
-		// Logical OR: (|(mail=nigel)(uid=nigel))
-		for _, subFilter := range ft {
-			if val := walkASTForAttribute(subFilter, targetAttr); val != "" {
-				return val
-			}
-		}
-	case message.FilterSubstrings:
-		// Substrings: (mail=*@example.com)
-		if strings.EqualFold(string(ft.Type_()), targetAttr) {
-			for _, sub := range ft.Substrings() {
-				if finalStr, ok := sub.(message.SubstringFinal); ok {
-					return "*@" + string(finalStr)
-				}
-				if anyStr, ok := sub.(message.SubstringAny); ok {
-					return "*@" + string(anyStr)
-				}
-			}
-		}
-	}
-	return ""
-}
-
 // flattenFilterAST walks the binary AST once and extracts all queried attributes
 // into a simple, easy-to-read map.
 // Example: (&(objectClass=user)(mail=nigel@go-dev.nl)) -> map["objectclass":"user", "mail":"nigel@go-dev.nl"]
@@ -323,10 +301,10 @@ func flattenFilterAST(f message.Filter, out map[string]string) {
 		attr := strings.ToLower(string(ft.Type_()))
 		for _, sub := range ft.Substrings() {
 			if finalStr, ok := sub.(message.SubstringFinal); ok {
-				out[attr] = "*@" + string(finalStr)
+				out[attr] = "*" + string(finalStr)
 			}
 			if anyStr, ok := sub.(message.SubstringAny); ok {
-				out[attr] = "*@" + string(anyStr)
+				out[attr] = "*" + string(anyStr)
 			}
 		}
 	case message.FilterAnd:

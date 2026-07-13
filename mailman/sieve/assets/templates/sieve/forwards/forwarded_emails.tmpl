@@ -1,0 +1,18 @@
+{{ template "skeleton" . }}
+
+{{ define "title" }}{{ T "Forwarded Emails" }}{{ end }}
+
+{{ define "css" }}
+    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
+{{ end }}
+
+{{ define "content" }}
+
+    <u>
+        {{ range $forward := .Data.forwards }}
+            <li>{{ $forward.Address.Address }}</li>
+        {{ end }}
+    </u>
+
+{{ end }}
+

@@ -43,6 +43,9 @@ var ViewAliasses = &list.View[*MailAlias]{
 			return w, r
 		}}}
 	},
+	CountQuerySet: func(qs *queries.QuerySet[*MailAlias]) (int64, error) {
+		return qs.ClearGroupBy().Count()
+	},
 	QuerySet: func(r *http.Request) *queries.QuerySet[*MailAlias] {
 		qs := queries.GetQuerySetWithContext(r.Context(), &MailAlias{})
 
@@ -184,8 +187,10 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 			return w, r
 		}
 
-		var cleaned = form.CleanedData()
-		var userObj, ok = cleaned["user"]
+		var (
+			cleaned     = form.CleanedData()
+			userObj, ok = cleaned["user"]
+		)
 		if ok && !fields.IsZero(userObj) {
 			userRow, err := queries.GetQuerySet(&auth.User{}).
 				Filter("ID", userObj).
@@ -251,6 +256,8 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 				)
 			}
 		}
+
+		messages.Success(r, trans.T(r.Context(), "Updated %q.", bv.Object.Object.Source.Address))
 
 		http.Redirect(w, r, r.URL.Path, http.StatusFound)
 		return nil, nil

@@ -30,8 +30,11 @@ const (
 	APPVAR_LDAP_TLS_CERT_FILE            = "ldap.APPVAR_LDAP_TLS_CERT_FILE"
 	APPVAR_LDAP_TLS_KEY_FILE             = "ldap.APPVAR_LDAP_TLS_KEY_FILE"
 	APPVAR_LDAP_TLS_INSECURE_SKIP_VERIFY = "ldap.APPVAR_LDAP_TLS_INSECURE_SKIP_VERIFY" // bool
-	DEFAULT_LDAP_PORT                    = "3890"
-	DEFAULT_LDAP_HOST                    = "0.0.0.0"
+	APPVAR_LDAP_TIMEOUT                  = "ldap.APPVAR_LDAP_TIMEOUT"                  // time.Duration
+
+	DEFAULT_LDAP_PORT    = "3890"
+	DEFAULT_LDAP_HOST    = "0.0.0.0"
+	DEFAULT_LDAP_TIMEOUT = time.Second * 300
 
 	DEFAULT_LDAP_TLS_ENABLED              = false
 	DEFAULT_LDAP_TLS_INSECURE_SKIP_VERIFY = false
@@ -51,9 +54,6 @@ func NewAppConfig() django.AppConfig {
 	LDAP.ModelObjects = []attrs.Definer{}
 
 	LDAP.Server = ldapserver.NewServer()
-	LDAP.Server.ReadTimeout = time.Second * 5
-	LDAP.Server.WriteTimeout = time.Second * 5
-
 	routes := ldapserver.NewRouteMux()
 	routes.Bind(handleBind)
 	routes.Search(handleSearch)
@@ -89,6 +89,15 @@ func NewAppConfig() django.AppConfig {
 			APPVAR_LDAP_TLS_KEY_FILE,
 			DEFAULT_LDAP_TLS_KEY,
 		)
+
+		timeout := django.ConfigGet(
+			django.Global.Settings,
+			APPVAR_LDAP_TIMEOUT,
+			DEFAULT_LDAP_TIMEOUT,
+		)
+
+		LDAP.Server.ReadTimeout = timeout
+		LDAP.Server.WriteTimeout = timeout
 
 		var addr = fmt.Sprintf("%s:%s", ldapHost, ldapPort)
 

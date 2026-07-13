@@ -17,7 +17,6 @@ import (
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/ldap"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/sieve"
 	queries "github.com/Nigel2392/go-django/queries/src"
 	"github.com/Nigel2392/go-django/queries/src/drivers"
 	"github.com/Nigel2392/go-django/queries/src/migrator"
@@ -62,18 +61,19 @@ func main() {
 		MAILSERVER_CONTAINER_NAME  = GetEnv("MAILSERVER_CONTAINER_NAME")
 		MAILSERVER_CACHING_ENABLED = GetEnvT("MAILSERVER_CACHING_ENABLED", true, strconv.ParseBool)
 
-		MAILMAN_INTERFACE = GetEnv("MAILMAN_INTERFACE", "127.0.0.1")
-		MAILMAN_PORT      = GetEnv("MAILMAN_PORT", "8080")
+		MAILMAN_INTERFACE    = GetEnv("MAILMAN_INTERFACE", "127.0.0.1")
+		MAILMAN_PORT         = GetEnv("MAILMAN_PORT", "8080")
+		MAILMAN_LDAP_TIMEOUT = GetEnvT("MAILMAN_LDAP_TIMEOUT", 5, strconv.Atoi)
 
 		MAILMAN_SQLITE_DB = GetEnv("MAILMAN_SQLITE_DB", "./db/sqlite.db")
 
 		MAILMAN_LOG       = GetEnv("MAILMAN_LOG", "./log/mailman.log")
 		MAILMAN_ERROR_LOG = GetEnv("MAILMAN_ERROR_LOG", "./log/mailman.error.log")
 
-		MAILMAN_SIEVE_TEMPLATE = GetEnv(
-			"MAILMAN_SIEVE_TEMPLATE",
-			"./templates/tmp/docker-mailserver/before.dovecot.sieve.tmpl",
-		)
+		//	MAILMAN_SIEVE_TEMPLATE = GetEnv(
+		//		"MAILMAN_SIEVE_TEMPLATE",
+		//		"./templates/tmp/docker-mailserver/before.dovecot.sieve.tmpl",
+		//	)
 
 		MAILMAN_ADMIN_EMAIL = GetEnv("MAILMAN_ADMIN_EMAIL")    //, "Administrator@example.com")
 		MAILMAN_ADMIN_PASS  = GetEnv("MAILMAN_ADMIN_PASSWORD") //, "Your-real-db-password!123")
@@ -111,7 +111,8 @@ func main() {
 			migrator.APPVAR_MIGRATION_DIR:       "./migrations",
 			mailmgmt.MAILSERVER_CONTAINER_NAME:  MAILSERVER_CONTAINER_NAME,
 			mailmgmt.MAILSERVER_CACHING_ENABLED: MAILSERVER_CACHING_ENABLED,
-			sieve.MAILMAN_SIEVE_TEMPLATE:        MAILMAN_SIEVE_TEMPLATE,
+			ldap.APPVAR_LDAP_TIMEOUT:            time.Duration(MAILMAN_LDAP_TIMEOUT) * time.Second,
+			// sieve.MAILMAN_SIEVE_TEMPLATE:        MAILMAN_SIEVE_TEMPLATE,
 			docker.APPVAR_DOCKER_CLIENT: func() (*client.Client, error) {
 				return client.New(
 					client.FromEnv,
@@ -132,7 +133,7 @@ func main() {
 			session.NewAppConfig,
 			auth.NewAppConfig,
 			mailmgmt.NewAppConfig,
-			sieve.NewAppConfig,
+			// sieve.NewAppConfig,
 			ldap.NewAppConfig,
 			chooser.NewAppConfig,
 			// translate.NewAppConfig,

@@ -294,6 +294,8 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 			}
 		}
 
+		messages.Success(r, trans.T(r.Context(), "Updated %q.", bv.Object.Object.Email.Address))
+
 		http.Redirect(w, r, r.URL.Path, http.StatusFound)
 		return nil, nil
 	},
