@@ -25,7 +25,7 @@ import (
 	"github.com/Nigel2392/goldcrest"
 	"github.com/Nigel2392/mux"
 	"github.com/Nigel2392/mux/middleware/authentication"
-	"github.com/depp/bytesize"
+	bytesize "github.com/inhies/go-bytesize"
 )
 
 const (

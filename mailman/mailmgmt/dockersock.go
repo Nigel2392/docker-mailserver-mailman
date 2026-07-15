@@ -12,7 +12,7 @@ import (
 	"github.com/Nigel2392/cache"
 	"github.com/Nigel2392/go-django/queries/src/drivers/errors"
 	django "github.com/Nigel2392/go-django/src"
-	"github.com/docker/docker/api/types/container"
+	"github.com/moby/moby/api/types/container"
 )
 
 func MailServer(ctx context.Context, refresh bool) (*container.InspectResponse, error) {
