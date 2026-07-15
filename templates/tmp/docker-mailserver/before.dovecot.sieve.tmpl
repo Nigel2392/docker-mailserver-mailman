@@ -14,7 +14,7 @@ if address :is "From" "{{ $ban.Email }}" {
 
 # --- Forwarded Emails ---
 {{ range $fwd := .Forwards }}
-if envelope :is "to" "{{ $fwd.Source }}" {
+if envelope :is "to" "{{ $fwd.Email }}" {
     redirect "{{ $fwd.Destination }}";
     {{ if $fwd.KeepCopy -}}
     keep;

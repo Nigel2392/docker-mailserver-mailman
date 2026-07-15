@@ -235,7 +235,7 @@ var ViewDeleteDomain = &DeleteView[*Domain]{
 		}
 
 		aliasses, err := queries.GetQuerySet(&MailAlias{}).
-			Filter("Source__iendswith", domainEmailPart).
+			Filter("Email__iendswith", domainEmailPart).
 			All()
 		if err != nil {
 			return nil, err
@@ -270,7 +270,7 @@ var ViewDeleteDomain = &DeleteView[*Domain]{
 
 		_, err = queries.GetQuerySetWithContext(qs.Context(), &MailAlias{}).
 			Select("IsActive").
-			Filter("Source__iendswith", domainEmailPart).
+			Filter("Email__iendswith", domainEmailPart).
 			Filter("IsActive", true).
 			BulkUpdate(map[string]expr.Expression{
 				"IsActive": expr.V(false),
@@ -319,7 +319,7 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 		}
 
 		aliasses, err := queries.GetQuerySet(&MailAlias{}).
-			Filter("Source__iendswith", domainEmailPart).
+			Filter("Email__iendswith", domainEmailPart).
 			All()
 		if err != nil {
 			return nil, err
@@ -351,7 +351,7 @@ var ViewDeactivateDomain = &DeleteView[*Domain]{
 
 		_, err = queries.GetQuerySetWithContext(qs.Context(), &MailAlias{}).
 			Select("IsActive").
-			Filter("Source__iendswith", domainEmailPart).
+			Filter("Email__iendswith", domainEmailPart).
 			Filter("IsActive", true).
 			BulkUpdate(expr.As("IsActive", expr.V(false)))
 		if err != nil {

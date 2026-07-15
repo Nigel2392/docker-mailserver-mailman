@@ -25,11 +25,13 @@ import (
 	"github.com/Nigel2392/goldcrest"
 	"github.com/Nigel2392/mux"
 	"github.com/Nigel2392/mux/middleware/authentication"
+	"github.com/depp/bytesize"
 )
 
 const (
 	_MAILSERVER_CONTAINER_INSPECT_CACHE_KEY = "MAILSERVER_INSPECT_RESULT"
 	MAILSERVER_CONTAINER_NAME               = "MAILSERVER_CONTAINER_NAME"
+	MAILSERVER_DEFAULT_USER_QUOTA           = "MAILSERVER_DEFAULT_USER_QUOTA"
 	MAILSERVER_CACHING_ENABLED              = "MAILSERVER_CACHING_ENABLED"
 	EMAIL_REGEX                             = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
 )
@@ -38,6 +40,7 @@ var CONFIG *MailManagementConfig
 
 type MailManagementConfig struct {
 	*apps.AppConfig
+	defaultInboxSize uint
 	//pool                    *shell.ExecPool
 }
 
@@ -56,11 +59,13 @@ func (d *DetailObject[OBJECT, FORM]) String() string {
 var _, _ = queries.SignalPostModelCreate.Listen(func(s signals.Signal[queries.SignalSave], ss queries.SignalSave) (err error) {
 	switch i := ss.Instance.(type) {
 	case *auth.User:
+
 		_, _, err = queries.
 			GetQuerySetWithContext(ss.Context, &UserMailProfile{}).
 			Filter("User", i).
 			GetOrCreate(&UserMailProfile{
-				User: i,
+				User:  i,
+				Bytes: CONFIG.defaultInboxSize,
 			})
 	}
 	return err
@@ -84,6 +89,19 @@ func NewAppConfig() django.AppConfig {
 	}
 
 	CONFIG.Init = func(settings django.Settings) (err error) {
+
+		var bytesStr = django.ConfigGet(
+			django.Global.Settings,
+			MAILSERVER_DEFAULT_USER_QUOTA,
+			"5gb",
+		)
+
+		bytes, err := bytesize.Parse(bytesStr)
+		if err != nil {
+			return err
+		}
+
+		CONFIG.defaultInboxSize = uint(bytes)
 
 		//	if !inspectResult.Container.State.Running {
 		//
@@ -148,17 +166,20 @@ func NewAppConfig() django.AppConfig {
 			Title:      trans.S("Alias Chooser"),
 			Model:      &MailAlias{},
 			PreviewString: func(ctx context.Context, instance *MailAlias) string {
-				return instance.Source.Address
+				return instance.Email.Address
+			},
+			ExtraData: func(ctx context.Context, instance *MailAlias) map[string]any {
+				return map[string]any{"TEST": 1}
 			},
 			ListPage: &chooser.ChooserListPage[*MailAlias]{
 				Fields: []string{
-					"Source",
+					"Email",
 					"UserCount",
 					"IsActive",
 				},
 				SearchFields: []admin.SearchField{
 					{
-						Name:   "Source",
+						Name:   "Email",
 						Lookup: expr.LOOKUP_ICONTANS,
 					},
 				},
@@ -167,7 +188,7 @@ func NewAppConfig() django.AppConfig {
 					var excl = r.URL.Query().Get("exclude") != ""
 					var qs = queries.
 						GetQuerySetWithContext(r.Context(), &MailAlias{}).
-						Select("ID", "Source", "IsActive").
+						Select("ID", "Email", "IsActive").
 						GroupBy("ID").
 						Annotate("UserCount", expr.COUNT("Destination.ID"))
 
@@ -176,7 +197,7 @@ func NewAppConfig() django.AppConfig {
 						qs = qs.Filter(expr.Q("ID__in", queries.Subquery(throughModelQs.Select("AliasID"))).Not(excl)).Distinct()
 					}
 
-					return qs.OrderBy("-IsActive", "-UserCount", "Source"), nil
+					return qs.OrderBy("-IsActive", "-UserCount", "Email"), nil
 				},
 			},
 		}, "mailman_alias")

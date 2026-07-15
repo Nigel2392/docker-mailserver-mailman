@@ -167,7 +167,7 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, aliasMail string) {
 	aliasRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.MailAlias{}).
-		Filter("Source__iexact", aliasMail).
+		Filter("Email__iexact", aliasMail).
 		Filter("IsActive", true).
 		First()
 
@@ -176,7 +176,7 @@ func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, alias
 	}
 
 	alias := aliasRow.Object
-	entry := ldapserver.NewSearchResultEntry("cn=" + alias.Source.Address + "," + baseDN)
+	entry := ldapserver.NewSearchResultEntry("cn=" + alias.Email.Address + "," + baseDN)
 
 	entry.AddAttribute(
 		message.AttributeDescription("objectClass"),
@@ -185,7 +185,7 @@ func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, alias
 	)
 	entry.AddAttribute(
 		message.AttributeDescription("otherMailbox"),
-		message.AttributeValue(alias.Source.Address),
+		message.AttributeValue(alias.Email.Address),
 	)
 
 	userRows, _ := alias.Destination.Objects().WithContext(ctx).All()

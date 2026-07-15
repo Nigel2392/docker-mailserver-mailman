@@ -14,7 +14,10 @@
   },
   "include": [
     "static_src/**/*.ts",
-    "static_src/**/*.js"
+    "static_src/**/*.js",
+
+    "mailman/chooser/static_src/**/*.ts",
+    "mailman/chooser/static_src/**/*.js",
   ],
   "exclude": [
     "node_modules",

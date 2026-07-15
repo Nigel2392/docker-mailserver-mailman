@@ -33,7 +33,7 @@ var ViewAliasses = &list.View[*MailAlias]{
 	PageParam:       "page",
 	AmountParam:     "limit",
 	OrderableColumns: []string{
-		"Source", "UserCount", "IsActive",
+		"Email", "UserCount", "IsActive",
 	},
 	MaxAmount:     DEFAULT_LIMIT_CHOICES[len(DEFAULT_LIMIT_CHOICES)-1],
 	DefaultAmount: DEFAULT_LIMIT_CHOICES[0],
@@ -51,14 +51,14 @@ var ViewAliasses = &list.View[*MailAlias]{
 
 		queryValue := r.URL.Query().Get("search")
 		if queryValue != "" {
-			qs = qs.Filter("Source__icontains", queryValue)
+			qs = qs.Filter("Email__icontains", queryValue)
 		}
 
 		return qs.
-			Select("ID", "Source", "IsActive").
+			Select("ID", "Email", "IsActive").
 			GroupBy("ID").
 			Annotate("UserCount", expr.COUNT("Destination.ID")). // Count the joined user IDs
-			OrderBy("-IsActive", "-UserCount", "Source")
+			OrderBy("-IsActive", "-UserCount", "Email")
 	},
 	GetContextFn: func(r *http.Request, qs *queries.QuerySet[*MailAlias]) (ctx.Context, error) {
 		c := ctx.RequestContext(r)
@@ -92,7 +92,7 @@ var ViewAliasses = &list.View[*MailAlias]{
 	ListColumns: []list.ListColumn[*MailAlias]{
 		list.Column[*MailAlias](
 			trans.S("Email"),
-			"Source",
+			"Email",
 		),
 		list.FieldColumn[*MailAlias](
 			trans.S("User Count"),
@@ -127,6 +127,10 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 			"mailmgmt/aliasses/detail.tmpl",
 		},
 		AllowedMethods: []string{"GET", "POST"},
+	},
+	ChangeContextFn: func(req *http.Request, object *DetailObject[*MailAlias, *forms.BaseForm], context ctx.ContextWithRequest) ctx.ContextWithRequest {
+		context.Set("form", object.Form)
+		return context
 	},
 	GetObjectFn: func(req *http.Request, urlArg string) (*DetailObject[*MailAlias, *forms.BaseForm], error) {
 		var row, err = queries.
@@ -187,6 +191,14 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 			return w, r
 		}
 
+		var ctx, tx, err = queries.StartTransaction(r.Context())
+		if err != nil {
+			logger.Errorf("failed to start transaction: %v", err)
+			messages.Error(r, "Internal server error, no changes were saved.")
+			return w, r
+		}
+		defer tx.Rollback(ctx)
+
 		var (
 			cleaned     = form.CleanedData()
 			userObj, ok = cleaned["user"]
@@ -197,7 +209,7 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 				Get()
 			if err != nil {
 				logger.Errorf("Error while retrieving user: %v", err)
-				messages.Error(r, "Internal Server Error...")
+				messages.Error(r, "Internal server error, no changes were saved.")
 				return w, r
 			}
 
@@ -206,7 +218,7 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 			exists, err := qs.Filter("ID", user.ID).Exists()
 			if err != nil {
 				logger.Errorf("Error while checking if user exists in alias queryset: %v", err)
-				messages.Error(r, "Internal Server Error...")
+				messages.Error(r, "Internal server error, no changes were saved.")
 				return w, r
 			}
 
@@ -214,7 +226,7 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 				messages.Error(r, fmt.Sprintf(
 					"%s is already assigned to %s",
 					user.Email.Address,
-					bv.Object.Object.Source.Address,
+					bv.Object.Object.Email.Address,
 				))
 				return w, r
 			}
@@ -222,14 +234,14 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 			created, err := qs.AddTarget(user)
 			if err != nil {
 				logger.Errorf("Error while adding alias to user: %v", err)
-				messages.Error(r, "Internal Server Error...")
+				messages.Error(r, "Internal server error, no changes were saved.")
 				return w, r
 			}
 
 			if !created {
 				logger.Errorf(
 					"Added alias %q to user %q, but was not created",
-					bv.Object.Object.Source.Address,
+					bv.Object.Object.Email.Address,
 					user.Email.Address,
 				)
 			}
@@ -252,13 +264,24 @@ var ViewAliasDetail = &views.DetailView[*DetailObject[*MailAlias, *forms.BaseFor
 			if err != nil {
 				logger.Errorf(
 					"Error while updating active status for alias %q: %v",
-					bv.Object.Object.Source.Address, err,
+					bv.Object.Object.Email.Address, err,
 				)
+				messages.Error(r, "Internal server error, no changes were saved.")
+				return w, r
 			}
 		}
 
-		messages.Success(r, trans.T(r.Context(), "Updated %q.", bv.Object.Object.Source.Address))
+		if err := tx.Commit(ctx); err != nil {
+			logger.Errorf("Failed to save changes to database: %v", err)
+			messages.Error(r, "Internal server error, no changes were saved.")
+			return w, r
+		}
 
+		if htmx.Is(r) {
+			return w, r
+		}
+
+		messages.Success(r, trans.T(r.Context(), "Updated %q.", bv.Object.Object.Email.Address))
 		http.Redirect(w, r, r.URL.Path, http.StatusFound)
 		return nil, nil
 	},
@@ -384,13 +407,13 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 		}
 
 		var ma = &MailAlias{
-			Source:   (*drivers.Email)(eml),
+			Email:    (*drivers.Email)(eml),
 			IsActive: true,
 		}
 
 		exists, err := queries.
 			GetQuerySetWithContext(r.Context(), &MailAlias{}).
-			Filter("Source__iexact", ma.Source.Address).
+			Filter("Email__iexact", ma.Email.Address).
 			Exists()
 		if err != nil {
 			return nil, false, err
@@ -403,7 +426,7 @@ var ViewAddAliasHtmx = &ModalFormView[forms.Form]{
 
 		ma, err = queries.
 			GetQuerySetWithContext(r.Context(), &MailAlias{}).
-			Filter("Source__iexact", ma.Source.Address).
+			Filter("Email__iexact", ma.Email.Address).
 			Create(ma)
 		if err != nil {
 			return nil, false, err
@@ -475,13 +498,13 @@ var ViewAddAliasToUserHtmx = &ModalFormView[forms.Form]{
 		}
 
 		var ma = &MailAlias{
-			Source:   (*drivers.Email)(eml),
+			Email:    (*drivers.Email)(eml),
 			IsActive: true,
 		}
 
 		ma, _, err = queries.
 			GetQuerySetWithContext(r.Context(), &MailAlias{}).
-			Filter("Source__iexact", ma.Source.Address).
+			Filter("Email__iexact", ma.Email.Address).
 			GetOrCreate(ma)
 		if err != nil {
 			return nil, false, err

@@ -22,7 +22,7 @@
         {{ if gt (len .Data.aliasses) 0 }}
         <h3 class="color-standout">{{ T "Aliasses in this domain:" }}</h3>
         <ul>{{ range $alias := .Data.aliasses }}
-            <li>{{ $alias.Object.Source.Address }}</li>
+            <li>{{ $alias.Object.Email.Address }}</li>
         {{ end }}</ul>
         {{ else }}
         <h3 class="color-standout">{{ T "No aliasses for this domain." }}</h3>

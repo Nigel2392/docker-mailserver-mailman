@@ -11,7 +11,7 @@
                 {{ .Data.AliasUser.Email.Address }}
                 {{ if not .Data.AliasUser.IsActive }}({{ T "Inactive" }}){{ end }}
             </span>
-            <button type="submit" name="confirm" class="text-btn" value="{{ .Data.AliasUser.ID }}">
+            <button type="submit" name="confirm" class="text-btn btn-danger" value="{{ .Data.AliasUser.ID }}">
                 {{ T "Remove..." }}
             </button>
         </form>

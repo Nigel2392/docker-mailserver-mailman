@@ -392,10 +392,14 @@ table.list .column-group:hover {
 .mailmgmt-cards {
     display: flex;
     flex-direction: row;
-    margin-left: calc((100% - 1200px) / 2);
     margin-top: 3rem;
-    max-width: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 2rem;
+    flex-wrap: wrap;
+    width: 100%;
+    position: relative;
 }
 .mailmgmt-index-card {
     position: relative;
@@ -407,6 +411,7 @@ table.list .column-group:hover {
     aspect-ratio: 1;
     gap: 0.5rem;
     width: 100%;
+    max-width: 25rem;
     padding: 1rem;
     overflow: hidden;
     border-radius: 50%;

@@ -6,8 +6,8 @@
                 <img src="{{$mode.LogoURL}}" alt="{{ T "Oops!" }}">
             </a>
         </li>
-        <a href="{{ url "mailmgmt:emails" }}" class="menu-item">{{ T "Emails" }}</a>
-        <a href="{{ url "mailmgmt:aliasses" }}" class="menu-item">{{ T "Aliases" }}</a>
-        <a href="{{ url "mailmgmt:domains" }}" class="menu-item">{{ T "Domains" }}</a>
+        <a href="{{ url "mailmgmt:emails" }}?nav=1" hx-get="{{ url "mailmgmt:emails" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Emails" }}</a>
+        <a href="{{ url "mailmgmt:aliasses" }}?nav=1" hx-get="{{ url "mailmgmt:aliasses" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Aliases" }}</a>
+        <a href="{{ url "mailmgmt:domains" }}?nav=1" hx-get="{{ url "mailmgmt:domains" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Domains" }}</a>
     </div>
 </div>

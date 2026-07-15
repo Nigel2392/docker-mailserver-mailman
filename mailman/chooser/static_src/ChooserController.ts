@@ -1,7 +1,7 @@
 import { Controller, ActionEvent } from "@hotwired/stimulus";
 import { Chooser } from "./chooser/chooser";
 
-type ChooserEvent = Event & { detail: { action: "open" | "close", modal: ChooserController }};
+type ChooserEvent = Event & { detail: { action: "open" | "close" | "select", modal: ChooserController, data?: any }};
 
 function newChooserEvent(action: "open" | "close" | "select", modal: ChooserController, event?: Event, data?: any): ChooserEvent {
     return new CustomEvent("modal:" + action, {
@@ -15,7 +15,7 @@ function newChooserEvent(action: "open" | "close" | "select", modal: ChooserCont
 }
 
 class ChooserController extends Controller<any> {
-    declare chooser: Chooser;
+    chooser: Chooser;
 
     static targets = ["preview", "input"];
     static values = {
@@ -48,9 +48,10 @@ class ChooserController extends Controller<any> {
         this.inputTarget.value = value;
         this.previewTarget.innerHTML = previewText;
         this.element.dispatchEvent(newChooserEvent(
-            "select", this, undefined, { value: value, previewText: previewText }
+            "select", this, null, { value: value, previewText: previewText }
         ))
     }
+
 
     async open(event?: ActionEvent) {
         await this.chooser.open();

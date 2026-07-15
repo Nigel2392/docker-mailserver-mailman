@@ -40,18 +40,18 @@ type MailAlias struct {
 	models.Model `table:"mail_aliases" label:"Alias" json:"-"`
 
 	ID          uint64                                      `json:"id" attrs:"primary;readonly"`
-	Source      *drivers.Email                              `json:"source"` // e.g. "info@example.com"
+	Email       *drivers.Email                              `json:"source"` // e.g. "info@example.com"
 	Destination *queries.RelM2M[*auth.User, *MailAliasUser] `json:"-"`
 	UserCount   int
 	IsActive    bool `json:"is_active"`
 }
 
 func (a *MailAlias) OrderBy() []string {
-	return []string{"-IsActive", "Source"}
+	return []string{"-IsActive", "Email"}
 }
 
 func (n *MailAlias) String() string {
-	return n.Source.Address
+	return n.Email.Address
 }
 
 func (u *MailAlias) Fields() []any {
@@ -63,7 +63,7 @@ func (u *MailAlias) Fields() []any {
 			Label:    trans.S("ID"),
 			HelpText: trans.S("The unique identifier for this user."),
 		}),
-		attrs.Unbound("Source", &attrs.FieldConfig{
+		attrs.Unbound("Email", &attrs.FieldConfig{
 			Column:    "source",
 			FormField: formfields.EmailField,
 			Label:     trans.S("Source Email"),

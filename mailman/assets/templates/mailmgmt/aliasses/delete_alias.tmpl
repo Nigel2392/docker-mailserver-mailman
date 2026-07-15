@@ -2,7 +2,7 @@
 
 {{ define "header" }}
     {{ $obj := (.Get "view.object") }}
-    {{ T "Delete Alias: %s" $obj.Source.Address }}
+    {{ T "Delete Alias: %s" $obj.Email.Address }}
 {{ end }}
 
 {{ define "view" }}

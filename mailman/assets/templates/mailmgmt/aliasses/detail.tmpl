@@ -3,7 +3,13 @@
 {{ define "view" }}
 <div class="mailmgmt-detail-form">
 
-    <form method="POST" class="mailmgmt-detail-fields">
+    <form 
+        method="POST" 
+        class="mailmgmt-detail-fields" 
+        hx-post="{{ url "mailmgmt:aliasses:detail" .Data.object.Object.ID }}"
+        hx-target="#main-center-content"
+        hx-swap="outerHTML">
+
             {{ csrf_field }}
             
             {{ include .Data.object.Form.BoundForm "mailmgmt/partials/form.tmpl" }}

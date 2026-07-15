@@ -101,7 +101,7 @@ func TestLDAPServer(t *testing.T) {
 
 	// Create a test alias
 	testAlias := models.Setup(&mailmgmt.MailAlias{
-		Source:   drivers.MustParseEmail("info@example.com"),
+		Email:    drivers.MustParseEmail("info@example.com"),
 		IsActive: true,
 	})
 

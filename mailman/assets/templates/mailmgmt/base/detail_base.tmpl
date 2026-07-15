@@ -4,7 +4,22 @@
 
 {{ define "css" }}
     <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
-    <link rel="stylesheet" href="{{ static "chooser/css/index.css" }}">
+
+    {{ if .Data.form }}
+        {{ $Media := .Data.form.Media }}
+        {{ range $css := $Media.CSS }}
+            {{ $css }}
+        {{ end }}
+    {{ end }}
+{{ end }}
+
+{{ define "js" }}
+    {{ if .Data.form }}
+        {{ $Media := .Data.form.Media }}
+        {{ range $js := $Media.JS }}
+            {{ $js }}
+        {{ end }}
+    {{ end }}
 {{ end }}
 
 {{ define "content" }}

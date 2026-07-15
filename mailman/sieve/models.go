@@ -77,8 +77,8 @@ func (b *ForwardedEmail) FieldDefs() attrs.Definitions {
 			Null:    false,
 			Blank:   false,
 		}),
-		attrs.NewField(b, "Source", &attrs.FieldConfig{
-			Label: trans.S("Source"),
+		attrs.NewField(b, "Email", &attrs.FieldConfig{
+			Label: trans.S("Email"),
 			Null:  false,
 			Blank: false,
 		}),

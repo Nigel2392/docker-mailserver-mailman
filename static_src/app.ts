@@ -5,7 +5,6 @@ import FormModalController from "./controllers/FormModalController"
 import DocumentController from "./controllers/DocumentController"
 import MessagesController from "./controllers/MessagesController"
 import { addMessage } from "./utils/messages"
-import { ChooserController } from "./controllers/ChooserController"
 import DropdownController from "./controllers/DropdownController"
 
 window.Stimulus = Application.start()
@@ -14,7 +13,6 @@ window.Stimulus.register("messages", MessagesController)
 window.Stimulus.register("form-modal", FormModalController)
 window.Stimulus.register("table-list", TableController)
 window.Stimulus.register("tooltip", TippyController)
-window.Stimulus.register("chooser", ChooserController)
 window.Stimulus.register("dropdown", DropdownController)
 
 window.addMessage = addMessage

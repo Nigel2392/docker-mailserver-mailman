@@ -8,10 +8,10 @@
             hx-swap="outerHTML">
             {{ csrf_field }}
             <span class="address-text">
-                {{ .Data.Alias.Source.Address }}
+                {{ .Data.Alias.Email.Address }}
                 {{ if not .Data.Alias.IsActive }}({{ T "Inactive" }}){{ end }}
             </span>
-            <button type="submit" name="confirm" class="text-btn" value="{{ .Data.Alias.ID }}">
+            <button type="submit" name="confirm" class="text-btn btn-danger" value="{{ .Data.Alias.ID }}">
                 {{ T "Remove..." }}
             </button>
         </form>

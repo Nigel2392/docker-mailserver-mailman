@@ -76,7 +76,7 @@ func ForwardChoices(ctx context.Context, limitPerQS int, isActive bool) (int, it
 
 			var obj = &ForwardedEmailChoice{
 				Type:    typ2,
-				Address: row.Object.Source,
+				Address: row.Object.Email,
 				Object:  row.Object,
 			}
 			if !yield(obj, nil) {
@@ -140,7 +140,7 @@ func ViewForwardedEmails(w http.ResponseWriter, r *http.Request) {
 		fwChoices = append(fwChoices, &ForwardedEmailChoice{
 			Type:    "alias",
 			Object:  row.Object,
-			Address: row.Object.Source,
+			Address: row.Object.Email,
 		})
 	}
 

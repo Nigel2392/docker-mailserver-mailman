@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Nigel2392/docker-mailserver-mailman/mailman/htmx"
 	django "github.com/Nigel2392/go-django/src"
 	"github.com/Nigel2392/go-django/src/apps"
 	"github.com/Nigel2392/go-django/src/components"
@@ -87,6 +88,12 @@ func NewAppConfig() django.AppConfig {
 				filesystem.MatchExt(".tmpl"),
 			),
 		),
+		TemplateFragmentForRequest: func(r *http.Request, baseTemplate string) (newBaseTemplate string, err error) {
+			if htmx.Is(r) && (r.URL.Query().Get("nav") == "1" || htmx.Target(r) == "main-center-content") {
+				return "main_content_area", nil
+			}
+			return baseTemplate, nil
+		},
 	}
 
 	tpl.Add(tpl.Config{

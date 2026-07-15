@@ -19,6 +19,10 @@ import (
 
 var RUNNING_IN_DOCKER = false
 
+func joinRootPath(p ...string) string {
+	return filepath.Join(append([]string{"./"}, p...)...)
+}
+
 func initAppFS() (fs.FS, fs.FS) {
 	var (
 		// tplFS    = filesystem.Sub(assetsFS, "assets/templates")

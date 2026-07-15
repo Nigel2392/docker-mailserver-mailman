@@ -161,7 +161,12 @@ var ViewEmails = &list.View[*auth.User]{
 	},
 }
 
-var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseForm]]{
+type detailObjectWithProfile struct {
+	*DetailObject[*auth.User, *forms.BaseForm]
+	Profile *UserMailProfile
+}
+
+var ViewEmailDetail = &views.DetailView[*detailObjectWithProfile]{
 	URLArgName: "email_id",
 	BaseView: views.BaseView{
 		BaseTemplateKey: "main",
@@ -171,10 +176,10 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 		},
 		AllowedMethods: []string{"GET", "POST"},
 	},
-	GetObjectFn: func(req *http.Request, urlArg string) (*DetailObject[*auth.User, *forms.BaseForm], error) {
+	GetObjectFn: func(req *http.Request, urlArg string) (*detailObjectWithProfile, error) {
 		var row, err = queries.
 			GetQuerySetWithContext(req.Context(), &auth.User{}).
-			Select("*").
+			Select("*", "Profile.*").
 			Preload("Aliasses").
 			Filter("ID", urlArg).
 			Get()
@@ -182,33 +187,67 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 			return nil, err
 		}
 
-		var obj = &DetailObject[*auth.User, *forms.BaseForm]{
-			Object: row.Object,
-			Form: newSimpleChooserForm(req.Context(), chooserFormOptions{
-				urlParam:   "user_id",
-				urlId:      row.Object.ID,
-				chooserObj: &MailAlias{},
-				chooserKey: "mailman_alias",
-				formName:   "alias",
-				formLabel:  trans.S("Alias"),
-				formHelp:   trans.S("Select an alias to assign this user to."),
-				formOpts: []func(forms.Form){
-					forms.WithFields(
-						fields.BooleanField(
-							fields.Name("is_active"),
-							fields.Label(trans.S("Is Active")),
-							fields.HelpText(trans.S("Wether this user can send and receive e-mails.")),
-							fields.Default(row.Object.IsActive),
-						),
-					),
-				},
+		profile, ok := row.Object.FieldDefs().Get("Profile").(*UserMailProfile)
+		if !ok {
+			profile = &UserMailProfile{
+				Bytes: CONFIG.defaultInboxSize,
+			}
+		}
+
+		var formFields = make([]forms.Field, 0, 2)
+		if profile.ID != 0 {
+			formFields = append(formFields, fields.NumberField[uint](
+				fields.Name("quota"),
+				fields.Label(trans.S("Quota size")),
+				fields.HelpText(trans.S("The size of the mailbox (Format: 10GB, 10mb, 1K, 2gb)")),
+				fields.Widget(NewByteSizeInput[uint](map[string]string{
+					"autocomplete": "off",
+					"class":        "form-control accented small",
+				})),
+			))
+		}
+
+		formFields = append(formFields, fields.BooleanField(
+			fields.Name("is_active"),
+			fields.Label(trans.S("Is Active")),
+			fields.HelpText(trans.S("Wether this user can send and receive e-mails.")),
+			fields.Attributes(map[string]string{
+				"autocomplete": "off",
+				"class":        "form-control accented",
 			}),
+		))
+
+		var obj = &detailObjectWithProfile{
+			Profile: profile,
+			DetailObject: &DetailObject[*auth.User, *forms.BaseForm]{
+				Object: row.Object,
+				Form: newSimpleChooserForm(req.Context(), chooserFormOptions{
+					urlParam:   "user_id",
+					urlId:      row.Object.ID,
+					chooserObj: &MailAlias{},
+					chooserKey: "mailman_alias",
+					formName:   "alias",
+					formLabel:  trans.S("Alias"),
+					formHelp:   trans.S("Select an alias to assign this user to."),
+					formOpts: []func(forms.Form){
+						forms.WithFields(formFields...),
+						forms.WithInitial(map[string]interface{}{
+							"quota":     profile.Bytes,
+							"is_active": row.Object.IsActive,
+						}),
+					},
+				}),
+			},
 		}
 
 		return obj, nil
 	},
-	PostMethod: func(d *views.DetailView[*DetailObject[*auth.User, *forms.BaseForm]], w http.ResponseWriter, r *http.Request, bound views.View) (http.ResponseWriter, *http.Request) {
-		var bv = bound.(*views.BoundDetailView[*DetailObject[*auth.User, *forms.BaseForm]])
+	ChangeContextFn: func(req *http.Request, object *detailObjectWithProfile, context ctx.ContextWithRequest) ctx.ContextWithRequest {
+		context.Set("form", object.Form)
+		return context
+	},
+	PostMethod: func(d *views.DetailView[*detailObjectWithProfile], w http.ResponseWriter, r *http.Request, bound views.View) (http.ResponseWriter, *http.Request) {
+		var bv = bound.(*views.BoundDetailView[*detailObjectWithProfile])
 		var form = forms.Initialize(
 			bv.Object.Form,
 			forms.WithRequestData(http.MethodPost, r),
@@ -225,10 +264,18 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 			return w, r
 		}
 
+		var ctx, tx, err = queries.StartTransaction(r.Context())
+		if err != nil {
+			logger.Errorf("failed to start transaction: %v", err)
+			messages.Error(r, "Internal server error, no changes were saved.")
+			return w, r
+		}
+		defer tx.Rollback(ctx)
+
 		var cleaned = form.CleanedData()
 		var aliasObj, ok = cleaned["alias"]
 		if ok && !fields.IsZero(aliasObj) {
-			aliasRow, err := queries.GetQuerySet(&MailAlias{}).
+			aliasRow, err := queries.GetQuerySetWithContext(ctx, &MailAlias{}).
 				Filter("ID", aliasObj).
 				Get()
 			if err != nil {
@@ -239,18 +286,18 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 
 			var userDefs = bv.Object.Object.FieldDefs()
 			var userAlias = userDefs.Get("Aliasses").(*queries.RelM2M[attrs.Definer, attrs.Definer])
-			var aliasQS = userAlias.Objects()
+			var aliasQS = userAlias.Objects().WithContext(ctx)
 			exists, err := aliasQS.Filter("ID", aliasRow.Object.ID).Exists()
 			if err != nil {
 				logger.Errorf("Error while checking if user exists in alias queryset: %v", err)
-				messages.Error(r, "Internal Server Error...")
+				messages.Error(r, "Internal server error, no changes were saved.")
 				return w, r
 			}
 
 			if exists {
 				messages.Error(r, fmt.Sprintf(
 					"%s is already assigned to %s",
-					aliasRow.Object.Source.Address,
+					aliasRow.Object.Email.Address,
 					bv.Object.Object.Email.Address,
 				))
 				return w, r
@@ -259,14 +306,14 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 			created, err := aliasQS.AddTarget(aliasRow.Object)
 			if err != nil {
 				logger.Errorf("Error while adding alias to user: %v", err)
-				messages.Error(r, "Internal Server Error...")
+				messages.Error(r, "Internal server error, no changes were saved.")
 				return w, r
 			}
 
 			if !created {
 				logger.Errorf(
-					"Added alias %q to user %q, but was not created",
-					aliasRow.Object.Source.Address,
+					"Added alias %q to user %q, but was not created (database state inconsistency)",
+					aliasRow.Object.Email.Address,
 					bv.Object.Object.Email.Address,
 				)
 			}
@@ -280,8 +327,9 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 			)
 		}
 
+		// Update user active status if it was changed
 		if isActive != bv.Object.Object.IsActive {
-			_, err := queries.GetQuerySet(&auth.User{}).
+			_, err := queries.GetQuerySetWithContext(ctx, &auth.User{}).
 				ExplicitSave().
 				Select("IsActive").
 				Filter("ID", bv.Object.Object.ID).
@@ -291,11 +339,51 @@ var ViewEmailDetail = &views.DetailView[*DetailObject[*auth.User, *forms.BaseFor
 					"Error while updating active status for user %q: %v",
 					bv.Object.Object.Email.Address, err,
 				)
+				messages.Error(r, "Internal server error, no changes were saved.")
+				return w, r
 			}
 		}
 
-		messages.Success(r, trans.T(r.Context(), "Updated %q.", bv.Object.Object.Email.Address))
+		// if there is no profile assigned, this can be skipped.
+		// only updates if the quota doesnt match the quota from DB.
+		if bv.Object.Profile.ID != 0 {
+			quota, ok := cleaned["quota"].(uint)
+			if !ok {
+				logger.Errorf(
+					"Type Mismatch for 'quota' variable: %T",
+					cleaned["quota"],
+				)
+			}
 
+			// check if changed
+			if quota != bv.Object.Profile.Bytes {
+				_, err := queries.GetQuerySetWithContext(ctx, &UserMailProfile{}).
+					ExplicitSave().
+					Select("Bytes").
+					Filter("ID", bv.Object.Profile.ID).
+					BulkUpdate(expr.As("Bytes", expr.Value(quota)))
+				if err != nil {
+					logger.Errorf(
+						"Error while updating quota for profile %d for user %q: %v",
+						bv.Object.Profile.ID, bv.Object.Object.Email.Address, err,
+					)
+					messages.Error(r, "Internal server error, no changes were saved.")
+					return w, r
+				}
+			}
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			logger.Errorf("Failed to save changes to database: %v", err)
+			messages.Error(r, "Internal server error, no changes were saved.")
+			return w, r
+		}
+
+		if htmx.Is(r) {
+			return w, r
+		}
+
+		messages.Success(r, trans.T(r.Context(), "Updated %q.", bv.Object.Object.Email.Address))
 		http.Redirect(w, r, r.URL.Path, http.StatusFound)
 		return nil, nil
 	},
@@ -313,6 +401,7 @@ var ViewEmailAliasRemove = &views.DetailView[*auth.User]{
 		var row, err = queries.
 			GetQuerySetWithContext(req.Context(), &auth.User{}).
 			Select("*").
+			Preload("Aliasses").
 			Filter("ID", urlArg).
 			Get()
 		if err != nil {

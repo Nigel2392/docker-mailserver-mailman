@@ -28,6 +28,7 @@ import (
 	"github.com/moby/moby/client"
 
 	// "github.com/Nigel2392/go-django/src/contrib/translations"
+
 	"github.com/Nigel2392/go-django/src/core/checks"
 	"github.com/Nigel2392/go-django/src/core/logger"
 )
@@ -65,10 +66,10 @@ func main() {
 		MAILMAN_PORT         = GetEnv("MAILMAN_PORT", "8080")
 		MAILMAN_LDAP_TIMEOUT = GetEnvT("MAILMAN_LDAP_TIMEOUT", 5, strconv.Atoi)
 
-		MAILMAN_SQLITE_DB = GetEnv("MAILMAN_SQLITE_DB", "./db/sqlite.db")
+		MAILMAN_SQLITE_DB = GetEnv("MAILMAN_SQLITE_DB", joinRootPath("db/sqlite.db"))
 
-		MAILMAN_LOG       = GetEnv("MAILMAN_LOG", "./log/mailman.log")
-		MAILMAN_ERROR_LOG = GetEnv("MAILMAN_ERROR_LOG", "./log/mailman.error.log")
+		MAILMAN_LOG       = GetEnv("MAILMAN_LOG", joinRootPath("log/mailman.log"))
+		MAILMAN_ERROR_LOG = GetEnv("MAILMAN_ERROR_LOG", joinRootPath("log/mailman.error.log"))
 
 		//	MAILMAN_SIEVE_TEMPLATE = GetEnv(
 		//		"MAILMAN_SIEVE_TEMPLATE",
@@ -100,18 +101,19 @@ func main() {
 
 	var app = django.App(
 		django.AppSettings(django.Config(map[string]interface{}{
-			django.APPVAR_ALLOWED_HOSTS:         []string{"*"},
-			django.APPVAR_DATABASE:              db,
-			django.APPVAR_HOST:                  MAILMAN_INTERFACE,
-			django.APPVAR_PORT:                  MAILMAN_PORT,
-			django.APPVAR_DEBUG:                 !RUNNING_IN_DOCKER,
-			django.APPVAR_RECOVERER:             RUNNING_IN_DOCKER,
-			auth.APPVAR_AUTH_EMAIL_LOGIN:        true,
-			auth.APPVAR_ALLOW_USER_REGISTER:     false,
-			migrator.APPVAR_MIGRATION_DIR:       "./migrations",
-			mailmgmt.MAILSERVER_CONTAINER_NAME:  MAILSERVER_CONTAINER_NAME,
-			mailmgmt.MAILSERVER_CACHING_ENABLED: MAILSERVER_CACHING_ENABLED,
-			ldap.APPVAR_LDAP_TIMEOUT:            time.Duration(MAILMAN_LDAP_TIMEOUT) * time.Second,
+			django.APPVAR_ALLOWED_HOSTS:               []string{"*"},
+			django.APPVAR_DATABASE:                    db,
+			django.APPVAR_HOST:                        MAILMAN_INTERFACE,
+			django.APPVAR_PORT:                        MAILMAN_PORT,
+			django.APPVAR_DEBUG:                       !RUNNING_IN_DOCKER,
+			django.APPVAR_RECOVERER:                   RUNNING_IN_DOCKER,
+			django.APPVAR_STATIC_ROUTE_CACHING_MAXAGE: 3600 * 24,
+			auth.APPVAR_AUTH_EMAIL_LOGIN:              true,
+			auth.APPVAR_ALLOW_USER_REGISTER:           false,
+			migrator.APPVAR_MIGRATION_DIR:             joinRootPath("db/migrations"),
+			mailmgmt.MAILSERVER_CONTAINER_NAME:        MAILSERVER_CONTAINER_NAME,
+			mailmgmt.MAILSERVER_CACHING_ENABLED:       MAILSERVER_CACHING_ENABLED,
+			ldap.APPVAR_LDAP_TIMEOUT:                  time.Duration(MAILMAN_LDAP_TIMEOUT) * time.Second,
 			// sieve.MAILMAN_SIEVE_TEMPLATE:        MAILMAN_SIEVE_TEMPLATE,
 			docker.APPVAR_DOCKER_CLIENT: func() (*client.Client, error) {
 				return client.New(
@@ -204,7 +206,43 @@ func main() {
 	// testCommands()
 	//
 	// os.Exit(0)
-
+	//	var str1, args1 = queries.GetQuerySet[attrs.Definer](&mailmgmt.MailAlias{}).
+	//		Annotate("object_type", expr.V(
+	//			contenttypes.NewContentType(&mailmgmt.MailAlias{}).ShortTypeName(),
+	//		)).
+	//		ParseExpression(
+	//			"SELECT ![t.ID], ![t.Email] AS `eml`, ![t.IsActive] FROM TABLE(SELF) AS `t`",
+	//		)
+	//	var str2, args2 = queries.GetQuerySet[attrs.Definer](&auth.User{}).
+	//		Annotate("object_type", expr.V(
+	//			contenttypes.NewContentType(&auth.User{}).ShortTypeName(),
+	//		)).
+	//		ParseExpression(
+	//			"SELECT ![t.ID], ![t.Email] AS `eml`, ![t.IsActive] FROM TABLE(SELF) AS `t`",
+	//		)
+	//
+	//	fmt.Printf("%v %s\n%v %s\n", args1, str1, args2, str2)
+	//
+	//	var qs1 = queries.GetQuerySet[attrs.Definer](&mailmgmt.MailAlias{}).
+	//		Select("ID", "Email", "IsActive").
+	//		Annotate("object_type", expr.V(
+	//			contenttypes.NewContentType(&mailmgmt.MailAlias{}).ShortTypeName(),
+	//		))
+	//	var qs2 = queries.GetQuerySet[attrs.Definer](&auth.User{}).
+	//		Select("ID", "Email", "IsActive").
+	//		Annotate("object_type", expr.V(
+	//			contenttypes.NewContentType(&auth.User{}).ShortTypeName(),
+	//		))
+	//	res, err := qs1.Union(qs2).Filter("IsActive", true).OrderBy("Email").All()
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//
+	//	for _, row := range res {
+	//		obj := row.Object.(*mailmgmt.MailAlias)
+	//		fmt.Println(obj.ID, obj.Email.Address, obj.IsActive, row.Annotations)
+	//	}
+	//
 	userCount, err := queries.CountObjects(&auth.User{})
 	if err != nil {
 		panic(fmt.Errorf("failed to count previously existing users: %w", err))
