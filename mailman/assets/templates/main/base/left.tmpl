@@ -1,13 +1,20 @@
 <div class="sidebar-left-container">
     <div class="sidebar-left">
         {{ $mode := mode }}
-        <li class="sidebar-logo">
-            <a href="{{ url "mailmgmt" }}">
+        <div class="sidebar-logo">
+            <a href="{{ url "mailmgmt" }}" class="logo-img">
                 <img src="{{$mode.LogoURL}}" alt="{{ T "Oops!" }}">
             </a>
-        </li>
+            <a href="{{ url "mailmgmt" }}?nav=1" hx-get="{{ url "mailmgmt" }}" hx-target="#main-center-content" hx-push-url="true" class="menu-item logo-text">
+                {{ T "Home" }}
+            </a>
+        </div>
         <a href="{{ url "mailmgmt:emails" }}?nav=1" hx-get="{{ url "mailmgmt:emails" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Emails" }}</a>
         <a href="{{ url "mailmgmt:aliasses" }}?nav=1" hx-get="{{ url "mailmgmt:aliasses" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Aliases" }}</a>
         <a href="{{ url "mailmgmt:domains" }}?nav=1" hx-get="{{ url "mailmgmt:domains" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Domains" }}</a>
     </div>
+    <form action="{{ url "auth:logout" }}" method="POST" class="sidebar-left h-100">
+        {{ csrf_field }}
+        <button type="submit" class="menu-item mt-auto">{{ T "Logout" }}</button>
+    </form>
 </div>
