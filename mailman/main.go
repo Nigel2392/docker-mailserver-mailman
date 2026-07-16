@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/chooser"
-	"github.com/Nigel2392/docker-mailserver-mailman/mailman/docker"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/ldap"
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
 	queries "github.com/Nigel2392/go-django/queries/src"
@@ -25,7 +24,6 @@ import (
 	"github.com/Nigel2392/go-django/src/contrib/messages"
 	"github.com/Nigel2392/go-django/src/contrib/session"
 	"github.com/Nigel2392/goldcrest"
-	"github.com/moby/moby/client"
 
 	// "github.com/Nigel2392/go-django/src/contrib/translations"
 
@@ -59,8 +57,9 @@ func GetEnvT[T any](key string, default_ T, convert func(in string) (out T, err 
 
 func main() {
 	var (
-		MAILSERVER_CONTAINER_NAME  = GetEnv("MAILSERVER_CONTAINER_NAME")
-		MAILSERVER_CACHING_ENABLED = GetEnvT("MAILSERVER_CACHING_ENABLED", true, strconv.ParseBool)
+		MAILSERVER_CONTAINER_NAME     = GetEnv("MAILSERVER_CONTAINER_NAME")
+		MAILSERVER_DEFAULT_USER_QUOTA = GetEnv("MAILSERVER_DEFAULT_USER_QUOTA", "5GB")
+		MAILSERVER_CACHING_ENABLED    = GetEnvT("MAILSERVER_CACHING_ENABLED", true, strconv.ParseBool)
 
 		MAILMAN_INTERFACE    = GetEnv("MAILMAN_INTERFACE", "127.0.0.1")
 		MAILMAN_PORT         = GetEnv("MAILMAN_PORT", "8080")
@@ -70,6 +69,7 @@ func main() {
 
 		MAILMAN_LOG       = GetEnv("MAILMAN_LOG", joinRootPath("log/mailman.log"))
 		MAILMAN_ERROR_LOG = GetEnv("MAILMAN_ERROR_LOG", joinRootPath("log/mailman.error.log"))
+		MAILMAN_LDAP_LOG  = GetEnv("MAILMAN_LDAP_LOG", joinRootPath("log/mailman.ldap.log"))
 
 		//	MAILMAN_SIEVE_TEMPLATE = GetEnv(
 		//		"MAILMAN_SIEVE_TEMPLATE",
@@ -81,7 +81,7 @@ func main() {
 	)
 
 	var files = make(map[string]*os.File)
-	for _, logPath := range []string{MAILMAN_LOG, MAILMAN_ERROR_LOG} {
+	for _, logPath := range []string{MAILMAN_LOG, MAILMAN_ERROR_LOG, MAILMAN_LDAP_LOG} {
 		if _, ok := files[logPath]; ok {
 			continue
 		}
@@ -113,18 +113,21 @@ func main() {
 			migrator.APPVAR_MIGRATION_DIR:             joinRootPath("db/migrations"),
 			mailmgmt.MAILSERVER_CONTAINER_NAME:        MAILSERVER_CONTAINER_NAME,
 			mailmgmt.MAILSERVER_CACHING_ENABLED:       MAILSERVER_CACHING_ENABLED,
+			mailmgmt.MAILSERVER_DEFAULT_USER_QUOTA:    MAILSERVER_DEFAULT_USER_QUOTA,
 			ldap.APPVAR_LDAP_TIMEOUT:                  time.Duration(MAILMAN_LDAP_TIMEOUT) * time.Second,
+			ldap.APPVAR_LDAP_LOG:                      io.MultiWriter(os.Stdout, files[MAILMAN_LDAP_LOG]),
+
 			// sieve.MAILMAN_SIEVE_TEMPLATE:        MAILMAN_SIEVE_TEMPLATE,
-			docker.APPVAR_DOCKER_CLIENT: func() (*client.Client, error) {
-				return client.New(
-					client.FromEnv,
-					client.WithTimeout(time.Second*10),
-				)
-			},
+			//docker.APPVAR_DOCKER_CLIENT: func() (*client.Client, error) {
+			//	return client.New(
+			//		client.FromEnv,
+			//		client.WithTimeout(time.Second*10),
+			//	)
+			//},
 		})),
 		django.AppLogger(&logger.Logger{
 			Level:       logger.DBG,
-			OutputTime:  true,
+			OutputTime:  !RUNNING_IN_DOCKER,
 			OutputDebug: io.MultiWriter(os.Stdout, files[MAILMAN_LOG]),
 			OutputInfo:  io.MultiWriter(os.Stdout, files[MAILMAN_LOG]),
 			OutputWarn:  io.MultiWriter(os.Stdout, files[MAILMAN_LOG]),

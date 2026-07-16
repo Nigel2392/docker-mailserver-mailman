@@ -44,6 +44,7 @@ WORKDIR /mailman
 
 ENV MAILMAN_INTERFACE=0.0.0.0
 ENV MAILMAN_PORT=8080
+ENV MAILSERVER_DEFAULT_USER_QUOTA=5GB
 ENV MAILMAN_SIEVE_TEMPLATE=/mailman/templates/tmp/docker-mailserver/before.dovecot.sieve.tmpl
 
 EXPOSE 8080

@@ -2,7 +2,6 @@ package ldap
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/Nigel2392/docker-mailserver-mailman/mailman/mailmgmt"
@@ -37,7 +36,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 	//	// Enforce Rate Limiting using your custom package
 	//	if err := RateLimit.Check(ctx, m); err != nil {
-	//		log.Printf("[BIND] Rate limit exceeded/blocked for IP: %s", m.Client.Addr().String())
+	//		_log.Printf("[BIND] Rate limit exceeded/blocked for IP: %s", m.Client.Addr().String())
 	//		res := ldapserver.NewBindResponse(ldapserver.LDAPResultBusy)
 	//		res.SetDiagnosticMessage("Too many attempts. Try again later.")
 	//		w.Write(res)
@@ -48,10 +47,10 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	bindDN := string(r.Name())
 	password := string(r.AuthenticationSimple())
 
-	log.Printf("[BIND] Attempt: DN=%s", bindDN)
+	_log.Infof("[BIND] Attempt: DN=%s", bindDN)
 
 	if len(password) > 64 || len(password) < 4 || strings.TrimSpace(password) == "" {
-		log.Printf("[BIND] Rejected, DN=%s, PasswordLen=%d", bindDN, len(password))
+		_log.Warnf("[BIND] Rejected, DN=%s, PasswordLen=%d", bindDN, len(password))
 		res := ldapserver.NewBindResponse(ldapserver.LDAPResultUnwillingToPerform)
 		res.SetDiagnosticMessage("Authentication not aligned with standards.")
 		w.Write(res)
@@ -60,7 +59,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 	parsedDN, err := ldap.ParseDN(bindDN)
 	if err != nil || len(parsedDN.RDNs) == 0 {
-		log.Printf("[BIND] Malformed DN rejected: %v", err)
+		_log.Warnf("[BIND] Malformed DN rejected: %v", err)
 		res := ldapserver.NewBindResponse(ldapserver.LDAPResultInvalidCredentials)
 		w.Write(res)
 		return
@@ -84,7 +83,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	case "mail":
 		qs = qs.Filter("Email__iexact", attrValue)
 	default:
-		log.Printf("[BIND] Unsupported bind attribute: %s", attrType)
+		_log.Warnf("[BIND] Unsupported bind attribute: %s", attrType)
 		res := ldapserver.NewBindResponse(ldapserver.LDAPResultInvalidCredentials)
 		w.Write(res)
 		return
@@ -92,7 +91,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 	userRow, err := qs.Get()
 	if err != nil {
-		log.Printf("[BIND] Failed to retrieve %s=%s (%v)", attrType, attrValue, err)
+		_log.Warnf("[BIND] Failed to retrieve %s=%s (%v)", attrType, attrValue, err)
 		res := ldapserver.NewBindResponse(ldapserver.LDAPResultInvalidCredentials)
 		w.Write(res)
 		return
@@ -100,14 +99,14 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 
 	u := userRow.Object
 	if !u.IsActive {
-		log.Printf("[BIND] Access denied: User %s is inactive", u.Username)
+		_log.Warnf("[BIND] Access denied: User %s is inactive", u.Username)
 		res := ldapserver.NewBindResponse(ldapserver.LDAPResultInvalidCredentials)
 		w.Write(res)
 		return
 	}
 
 	if err := u.Password.Check(password); err != nil {
-		log.Printf("[BIND] Invalid password for user: %s: %q", u.Username, password)
+		_log.Warnf("[BIND] Invalid password for user: %s: %q", u.Username, password)
 		res := ldapserver.NewBindResponse(ldapserver.LDAPResultInvalidCredentials)
 		w.Write(res)
 		return
@@ -117,7 +116,7 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	// _ = RateLimit.Reset(ctx, m)
 	m.Client.SetData(u.IsAdministrator)
 
-	log.Printf("[BIND] SUCCESS for user: %s", u.Username)
+	_log.Infof("[BIND] SUCCESS for user: %s", u.Username)
 	res := ldapserver.NewBindResponse(ldapserver.LDAPResultSuccess)
 	w.Write(res)
 }
@@ -129,7 +128,7 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	sessionData := m.Client.GetData()
 	isLdapAdmin, ok := sessionData.(bool)
 	if !ok || !isLdapAdmin {
-		log.Println("[SEARCH] Rejected unauthorized search attempt")
+		_log.Warnf("[SEARCH] Rejected unauthorized search attempt")
 		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultInsufficientAccessRights))
 		return
 	}
@@ -141,7 +140,7 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	params := make(map[string]string)
 	flattenFilterAST(r.Filter(), params)
 
-	log.Printf("[SEARCH] Base: %s | Params: %v", baseDN, params)
+	_log.Infof("[SEARCH] Base: %s | Params: %v", baseDN, params)
 
 	ctx, cancel := context.WithTimeout(context.Background(), django.ConfigGet(
 		django.Global.Settings,
@@ -158,7 +157,7 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	} else if mail != "" {
 		searchUser(ctx, w, baseDN, mail)
 	} else {
-		log.Printf("[SEARCH] Unhandled query parameters: %v", params)
+		_log.Warnf("[SEARCH] Unhandled query parameters: %v", params)
 	}
 
 	// Always conclude the search operation
@@ -172,6 +171,8 @@ func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, alias
 		First()
 
 	if err != nil || aliasRow == nil || aliasRow.Object == nil {
+		_log.Warnf("Alias is nil or an error occurred: %v", err)
+		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
 		return
 	}
 
@@ -188,7 +189,11 @@ func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, alias
 		message.AttributeValue(alias.Email.Address),
 	)
 
-	userRows, _ := alias.Destination.Objects().WithContext(ctx).All()
+	userRows, err := alias.Destination.Objects().WithContext(ctx).All()
+	if err != nil || len(userRows) == 0 {
+		_log.Warnf("Users are not found for alias or an error occurred: %v", err)
+	}
+
 	var mailValues []message.AttributeValue
 	for u := range userRows.Objects() {
 		mailValues = append(mailValues, message.AttributeValue(u.Email.Address))
@@ -207,6 +212,8 @@ func searchDomain(ctx context.Context, w ldapserver.ResponseWriter, baseDN, doma
 		First()
 
 	if err != nil || domainRow == nil || domainRow.Object == nil {
+		_log.Warnf("Domain is nil or an error occurred: %v", err)
+		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
 		return
 	}
 
@@ -244,7 +251,9 @@ func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email 
 		Filter("IsActive", true).
 		Get()
 
-	if err != nil || userRow == nil {
+	if err != nil || userRow == nil || userRow.Object == nil {
+		_log.Warnf("User is nil or an error occurred: %v", err)
+		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
 		return
 	}
 

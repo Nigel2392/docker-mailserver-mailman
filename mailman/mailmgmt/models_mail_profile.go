@@ -57,7 +57,7 @@ func (u *UserMailProfile) DovecotQuota() string {
 	// Dovecot expects limits in Kilobytes by default unless a unit is specified.
 	// By explicitly appending 'B', we safely pass the exact raw byte count,
 	// preventing any rounding errors on the mail server.
-	return fmt.Sprintf("*:storage=%dB", u.Bytes)
+	return fmt.Sprintf("*:bytes=%d", u.Bytes)
 }
 
 func (m *UserMailProfile) FieldDefs() attrs.Definitions {

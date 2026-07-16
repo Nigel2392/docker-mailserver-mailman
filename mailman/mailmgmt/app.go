@@ -93,7 +93,7 @@ func NewAppConfig() django.AppConfig {
 		var bytesStr = django.ConfigGet(
 			django.Global.Settings,
 			MAILSERVER_DEFAULT_USER_QUOTA,
-			"5gb",
+			"5GB",
 		)
 
 		bytes, err := bytesize.Parse(bytesStr)

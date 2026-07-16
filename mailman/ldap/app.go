@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"time"
 
 	django "github.com/Nigel2392/go-django/src"
@@ -20,11 +22,15 @@ type AppConfig struct {
 	Server *ldapserver.Server
 }
 
-var LDAP *AppConfig
+var (
+	LDAP *AppConfig
+	_log logger.Log
+)
 
 const (
 	APPVAR_LDAP_PORT = "ldap.APPVAR_LDAP_PORT"
 	APPVAR_LDAP_HOST = "ldap.APPVAR_LDAP_HOST"
+	APPVAR_LDAP_LOG  = "ldap.APPVAR_LDAP_LOG"
 
 	APPVAR_LDAP_TLS_ENABLED              = "ldap.APPVAR_LDAP_TLS_ENABLED" // bool
 	APPVAR_LDAP_TLS_CERT_FILE            = "ldap.APPVAR_LDAP_TLS_CERT_FILE"
@@ -98,6 +104,25 @@ func NewAppConfig() django.AppConfig {
 
 		LDAP.Server.ReadTimeout = timeout
 		LDAP.Server.WriteTimeout = timeout
+
+		logger.Info("Initialising LDAP logger.")
+
+		ldapOut := django.ConfigGet[io.Writer](
+			django.Global.Settings,
+			APPVAR_LDAP_LOG,
+			os.Stdout,
+		)
+
+		_log = &logger.Logger{
+			Level:       logger.INF,
+			Prefix:      "LDAP",
+			OutputTime:  true,
+			OutputInfo:  ldapOut,
+			OutputWarn:  ldapOut,
+			OutputError: ldapOut,
+		}
+
+		_log.Info("initialised LDAP logger")
 
 		var addr = fmt.Sprintf("%s:%s", ldapHost, ldapPort)
 
