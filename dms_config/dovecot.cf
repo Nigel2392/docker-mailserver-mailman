@@ -1,8 +1,21 @@
-# tell Dovecot to read the env var from the container
-import_environment = $import_environment DOVEADM_PASSWORD
+# force plugins into the protocols that process mail
+protocol imap {
+  mail_plugins = $mail_plugins quota imap_quota
+}
+protocol lmtp {
+  mail_plugins = $mail_plugins quota
+}
+protocol lda {
+  mail_plugins = $mail_plugins quota
+}
+protocol doveadm {
+  mail_plugins = $mail_plugins quota
+}
 
-# force the quota plugins to load (fixing "quota not enabled" doveadm issue)
-mail_plugins = $mail_plugins quota imap_quota
+# caching to reduce LDAP overhead on your Go app
+auth_cache_size = 10M
+auth_cache_ttl = 1hour
+auth_cache_negative_ttl = 5mins
 
 # use count backend for quotas
 plugin {
@@ -10,7 +23,7 @@ plugin {
   quota_vsizes = yes
 }
 
-doveadm_password = %{env:DOVEADM_PASSWORD}
+# HTTP API for the mailman backend
 service doveadm {
   inet_listener http {
     port = 8080
