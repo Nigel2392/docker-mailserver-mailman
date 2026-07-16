@@ -124,6 +124,23 @@ func handleBind(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 // -------------------------------------------------------------
 // SEARCH Handler (Users & Aliases)
 // -------------------------------------------------------------
+
+type SearchHandler interface {
+	Handle(ctx context.Context, w ldapserver.ResponseWriter, params map[string]string, baseDN string) (handled bool)
+}
+
+var searchHandlers []SearchHandler = []SearchHandler{
+	&SearchAliasHandler{},
+	&SearchDomainHandler{},
+	&SearchUserHandler{
+		ParamMap: map[string]string{
+			"uid":  "Username__iexact",
+			"mail": "Email__iexact",
+			"cn":   "Username__iexact",
+		},
+	},
+}
+
 func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	sessionData := m.Client.GetData()
 	isLdapAdmin, ok := sessionData.(bool)
@@ -149,22 +166,30 @@ func handleSearch(w ldapserver.ResponseWriter, m *ldapserver.Message) {
 	))
 	defer cancel()
 
-	// 2. Route the request based on the parameters Postfix sent
-	if alias := params["othermailbox"]; alias != "" {
-		searchAlias(ctx, w, baseDN, alias)
-	} else if mail := params["mail"]; strings.HasPrefix(mail, "*@") {
-		searchDomain(ctx, w, baseDN, strings.TrimPrefix(mail, "*@"))
-	} else if mail != "" {
-		searchUser(ctx, w, baseDN, mail)
-	} else {
-		_log.Warnf("[SEARCH] Unhandled query parameters: %v", params)
+	for _, handler := range searchHandlers {
+		if handler.Handle(ctx, w, params, baseDN) {
+			// Always conclude the search operation
+			w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
+			return
+		}
 	}
 
-	// Always conclude the search operation
-	w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
+	// Send a fallback unwilling to perform if no handler caught it
+	_log.Errorf("[LDAP Router] Unhandled LDAP message type or filter: %s", m.ProtocolOpName())
+	w.Write(ldapserver.NewResponse(ldapserver.LDAPResultUnwillingToPerform))
 }
 
-func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, aliasMail string) {
+type SearchAliasHandler struct{}
+
+func (s *SearchAliasHandler) Handle(ctx context.Context, w ldapserver.ResponseWriter, params map[string]string, baseDN string) (handled bool) {
+	aliasMail, ok := params["othermailbox"]
+	if !ok || aliasMail == "" {
+		return false
+	}
+
+	// this is the correct handler, set handled=true so go's anonymous return works.
+	handled = true
+
 	aliasRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.MailAlias{}).
 		Filter("Email__iexact", aliasMail).
 		Filter("IsActive", true).
@@ -172,7 +197,6 @@ func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, alias
 
 	if err != nil || aliasRow == nil || aliasRow.Object == nil {
 		_log.Warnf("Alias is nil or an error occurred: %v", err)
-		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
 		return
 	}
 
@@ -204,16 +228,26 @@ func searchAlias(ctx context.Context, w ldapserver.ResponseWriter, baseDN, alias
 	}
 
 	w.Write(entry)
+	return
 }
 
-func searchDomain(ctx context.Context, w ldapserver.ResponseWriter, baseDN, domainName string) {
+type SearchDomainHandler struct{}
+
+func (s *SearchDomainHandler) Handle(ctx context.Context, w ldapserver.ResponseWriter, params map[string]string, baseDN string) (handled bool) {
+	mail, ok := params["mail"]
+	if !ok || !strings.HasPrefix(mail, "*@") {
+		return false
+	}
+
+	// this is the correct handler, set handled=true so go's anonymous return works.
+	handled = true
+	domainName := strings.TrimPrefix(mail, "*@")
 	domainRow, err := queries.GetQuerySetWithContext(ctx, &mailmgmt.Domain{}).
 		Filter("Domain__iexact", domainName).
 		First()
 
 	if err != nil || domainRow == nil || domainRow.Object == nil {
 		_log.Warnf("Domain is nil or an error occurred: %v", err)
-		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
 		return
 	}
 
@@ -241,19 +275,53 @@ func searchDomain(ctx context.Context, w ldapserver.ResponseWriter, baseDN, doma
 		message.AttributeValue("TRUE"),
 	)
 	w.Write(entry)
+	return
 }
 
-func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email string) {
+type SearchUserHandler struct {
+	ParamMap map[string]string
+}
+
+func (s *SearchUserHandler) Handle(ctx context.Context, w ldapserver.ResponseWriter, params map[string]string, baseDN string) (handled bool) {
+	// If this contains alias or domain syntax, ignore it
+	if _, ok := params["othermailbox"]; ok {
+		return false
+	}
+
+	mail, ok := params["mail"]
+	if !ok || strings.HasPrefix(mail, "*@") {
+		return false
+	}
+
+	// this is the correct handler, set handled=true so go's anonymous return works.
+	handled = true
+
+	var (
+		fKey string
+		fVal string
+	)
+
+	for k, v := range s.ParamMap {
+		paramVal, ok := params[k]
+		if ok && paramVal != "" {
+			fKey = v
+			fVal = paramVal
+		}
+	}
+
+	if fKey == "" || fVal == "" {
+		return false
+	}
+
 	userRow, err := queries.GetQuerySet(&auth.User{}).
 		WithContext(ctx).
 		Select("*", "Profile.*").
-		Filter("Email__iexact", email).
+		Filter(fKey, fVal).
 		Filter("IsActive", true).
 		Get()
 
 	if err != nil || userRow == nil || userRow.Object == nil {
 		_log.Warnf("User is nil or an error occurred: %v", err)
-		w.Write(ldapserver.NewSearchResultDoneResponse(ldapserver.LDAPResultSuccess))
 		return
 	}
 
@@ -263,6 +331,7 @@ func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email 
 		message.AttributeDescription("objectClass"),
 		message.AttributeValue("user"),
 		message.AttributeValue("person"),
+		message.AttributeValue("inetOrgPerson"),
 	)
 	entry.AddAttribute(
 		message.AttributeDescription("uid"),
@@ -297,6 +366,7 @@ func searchUser(ctx context.Context, w ldapserver.ResponseWriter, baseDN, email 
 	}
 
 	w.Write(entry)
+	return
 }
 
 // flattenFilterAST walks the binary AST once and extracts all queried attributes
