@@ -33,7 +33,11 @@ const (
 	MAILSERVER_CONTAINER_NAME               = "MAILSERVER_CONTAINER_NAME"
 	MAILSERVER_DEFAULT_USER_QUOTA           = "MAILSERVER_DEFAULT_USER_QUOTA"
 	MAILSERVER_CACHING_ENABLED              = "MAILSERVER_CACHING_ENABLED"
-	EMAIL_REGEX                             = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
+
+	MAILMAN_DOVEADM_API_ADDR = "MAILMAN_DOVEADM_API_ADDR"
+	MAILMAN_DOVEADM_API_KEY  = "MAILMAN_DOVEADM_API_KEY"
+
+	EMAIL_REGEX = `([a-zA-Z0-9_.+,"-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)`
 )
 
 var CONFIG *MailManagementConfig
@@ -86,6 +90,7 @@ func NewAppConfig() django.AppConfig {
 		&MailAliasUser{},
 		&UserMailProfile{},
 		&Domain{},
+		&ServiceAccount{},
 	}
 
 	CONFIG.Init = func(settings django.Settings) (err error) {
@@ -259,6 +264,15 @@ func NewAppConfig() django.AppConfig {
 
 		htmxDomains := htmx.Get("/domains", nil, "domains")
 		htmxDomains.Post("/activate/<<domain_id>>", views.Serve(ViewActivateDomain), "activate")
+
+		services := group.Get("/services", views.Serve(ViewServiceAccounts), "services")
+		services.Get("/add", views.Serve(ViewAddServiceAccount), "add")
+		services.Post("/add", views.Serve(ViewAddServiceAccount))
+		services.Get("/detail/<<account_id>>", views.Serve(ViewServiceAccountDetail), "detail")
+		services.Post("/detail/<<account_id>>", views.Serve(ViewServiceAccountDetail))
+		services.Get("/delete/<<account_id>>", views.Serve(ViewDeleteServiceAccount), "delete")
+		services.Post("/delete/<<account_id>>", views.Serve(ViewDeleteServiceAccount))
+
 	}
 
 	return CONFIG

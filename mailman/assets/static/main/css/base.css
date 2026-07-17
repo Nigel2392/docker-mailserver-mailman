@@ -454,6 +454,9 @@ li {
 .form-control.small {
   max-width: 225px; 
 }
+.form-control.medium {
+  max-width: 450px; 
+}
 .form-label {
     display: inline-block;
     color: var(--color-primary);

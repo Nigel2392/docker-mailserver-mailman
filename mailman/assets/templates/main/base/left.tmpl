@@ -12,6 +12,7 @@
         <a href="{{ url "mailmgmt:emails" }}?nav=1" hx-get="{{ url "mailmgmt:emails" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Emails" }}</a>
         <a href="{{ url "mailmgmt:aliasses" }}?nav=1" hx-get="{{ url "mailmgmt:aliasses" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Aliases" }}</a>
         <a href="{{ url "mailmgmt:domains" }}?nav=1" hx-get="{{ url "mailmgmt:domains" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Domains" }}</a>
+        <a href="{{ url "mailmgmt:services" }}?nav=1" hx-get="{{ url "mailmgmt:services" }}?nav=1" hx-target="#main-center-content" hx-push-url="true" class="menu-item">{{ T "Service Accounts" }}</a>
     </div>
     <form action="{{ url "auth:logout" }}" method="POST" class="sidebar-left h-100">
         {{ csrf_field }}

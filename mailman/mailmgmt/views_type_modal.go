@@ -64,16 +64,22 @@ func (l *GenericBoundModalView[_BOUND, VIEW]) Render(w http.ResponseWriter, req 
 		"modal-add-%s", uuid,
 	))
 
-	switch {
-	case renderFunc != nil:
-		err = renderFunc(l.Embedder, writer, req, context)
-	case base != "" || template != "":
-		err = tpl.FRender(writer, context, base, template)
-	default:
-		return errors.Wrap(errs.ErrNotImplemented, "view.Render not set and no template specified")
-	}
-	if err != nil {
-		return err
+	for i := range 2 {
+		switch {
+		case renderFunc != nil && i == 0:
+			err = renderFunc(l.Embedder, writer, req, context)
+		case base != "" || template != "":
+			err = tpl.FRender(writer, context, base, template)
+		default:
+			err = errors.Wrap(errs.ErrNotImplemented, "view.Render not set and no template specified")
+		}
+		if err != nil {
+			return err
+		}
+
+		if writer.Len() > 0 {
+			break
+		}
 	}
 
 	var modalTitle string

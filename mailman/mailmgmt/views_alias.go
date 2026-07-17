@@ -24,6 +24,7 @@ import (
 	"github.com/Nigel2392/go-django/src/views"
 	"github.com/Nigel2392/go-django/src/views/list"
 	"github.com/Nigel2392/mux"
+	"github.com/Nigel2392/mux/middleware/authentication"
 )
 
 var ViewAliasses = &list.View[*MailAlias]{
@@ -103,6 +104,10 @@ var ViewAliasses = &list.View[*MailAlias]{
 			"IsActive",
 		),
 		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *MailAlias) template.HTML {
+			if !authentication.Retrieve(r).IsAdmin() {
+				return ""
+			}
+
 			var html = `<div class="mailmgmt-list-item-actions">
                 <a href="%s" class="mailmgmt-action-button mailmgmt-action-delete">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mailmgmt-action-icon" viewBox="0 0 16 16" data-controller="tooltip" data-tooltip-content-value="%s" data-tooltip-placement-value="bottom">

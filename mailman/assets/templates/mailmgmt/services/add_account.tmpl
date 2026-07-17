@@ -1,0 +1,25 @@
+{{ template "skeleton" . }}
+
+{{ define "title" }}{{ T "Add Service Account" }}{{ end }}
+
+{{ define "css" }}
+    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
+{{ end }}
+
+{{ define "content" }}
+
+    <div class="mailmgmt-content">
+        <form method="post" autocomplete="off">
+            {{ csrf_field }}
+            
+            {{ include .Data.form "mailmgmt/partials/form.tmpl" }}
+            
+            <div class="w-100 d-flex">
+                <a href="{{.Data.NextURL}}" class="btn btn-standout btn-standalone m-0">{{ T "Back" }}</a>
+                <input type="submit" class="btn btn-standout btn-standalone" value="{{ T "Submit" }}">
+            </div>
+        </form>
+    </div>
+
+{{ end }}
+

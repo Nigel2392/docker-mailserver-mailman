@@ -14,6 +14,9 @@ services:
       - MAILSERVER_CACHING_ENABLED=true
       - MAILMAN_ADMIN_EMAIL=Administrator@example.com
       - MAILMAN_ADMIN_PASSWORD=Your-real-db-password!123
+      - MAILMAN_LDAP_TIMEOUT=300
+      - MAILMAN_DOVEADM_API_ADDR=mailserver:8040
+      - MAILMAN_DOVEADM_API_KEY=super-secret-api-key123
 
   mailman_mailserver:
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
@@ -30,45 +33,51 @@ services:
     volumes:
       - mailman_mailserver_data:/var/mail/
       - mailman_mailserver_state:/var/mail-state/
-      - mailman_mailserver_config:/tmp/docker-mailserver/
+      - ./.private/dms_config:/tmp/docker-mailserver/
     environment:
       - ENABLE_RSPAMD=1
       - ENABLE_CLAMAV=1
       - ENABLE_FAIL2BAN=1
+
+      # Connect quota service to the go backend:
+      - DOVECOT_DOVEADM_API_PORT=8040
       
       # ---------------------------------------------
       # LDAP INTEGRATION (Connecting to Go Backend)
       # ---------------------------------------------
+      - ENABLE_LDAP=1
       - ACCOUNT_PROVISIONER=LDAP
       
-      # The Go application's service name so the mailserver can reach it
+        # The Go application's service name so the mailserver can reach it
       - LDAP_SERVER_HOST=ldap://mailman:3890
       
-      # The Base tree DMS will search. Our Go app ignores this, so it can be anything.
-      # This will be changed later.
+        # The Base tree DMS will search. Our Go app ignores this, so it can be anything.
+        # This will be changed later.
+      - LDAP_BIND_DN=cn=Administrator,dc=example,dc=com
+      - LDAP_BIND_PW=super-secret-api-key123
       - LDAP_SEARCH_BASE=dc=example,dc=com
       
-      # The Service Account credentials we programmed into the Go 'BIND' handler
-      - LDAP_BIND_DN=cn=Administrator,dc=example,dc=com
-      - LDAP_BIND_PW=Your-real-db-password!123
-      
-      # The exact queries that trigger our Go 'SEARCH' handler regex/string extractors
+        # The exact queries that trigger our Go 'SEARCH' handler regex/string extractors
       - LDAP_QUERY_FILTER_USER=(&(objectClass=user)(mail=%s))
       - LDAP_QUERY_FILTER_ALIAS=(&(objectClass=user)(otherMailbox=%s))
       
-      # Group and Domain filters are required by DMS, even if you don't use them yet
+        # Group and Domain filters are required by DMS, even if you don't use them yet
       - LDAP_QUERY_FILTER_GROUP=(&(objectclass=group)(mail=%s))
       - LDAP_QUERY_FILTER_DOMAIN=(&(|(mail=*@%s)(mailalias=*@%s)(mailGroupMember=*@%s))(mailEnabled=TRUE))
-
-      # Tell Dovecot to delegate password checking to our Go server's handleBind function
+      
+        # Tell Dovecot to delegate password checking to our Go server's handleBind function
       - DOVECOT_AUTH_BIND=yes
-      # Tell Dovecot how to find the user checking their mail
+      
+        # Tell Dovecot how to find the user checking their mail
       - DOVECOT_PASS_FILTER=(&(objectClass=user)(mail=%u))
       - DOVECOT_USER_FILTER=(&(objectClass=user)(mail=%u))
-      # Tell Dovecot how to map our Go database attributes to its internal engines
-      - DOVECOT_PASS_ATTRS=uid=user,userPassword=password
+      
+        # Tell Dovecot how to map our Go database attributes to its internal engines
+      - DOVECOT_PASS_ATTRS=uid=user
       - DOVECOT_USER_ATTRS==home=/var/mail/%d/%n,=uid=5000,=gid=5000,mailQuota=quota_rule
+
+      - DOVEADM_PASSWORD=super-secret-api-key123
+
 volumes:
   mailman_mailserver_data:
   mailman_mailserver_state:
-  mailman_mailserver_config:

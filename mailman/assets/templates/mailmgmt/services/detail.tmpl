@@ -1,0 +1,56 @@
+{{ template "skeleton" . }}
+
+{{ define "title" }}{{ T "View Service Account" }}{{ end }}
+
+{{ define "css" }}
+    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
+{{ end }}
+
+{{ define "content" }}
+    <div class="mailmgmt-object">
+        <div class="mailmgmt-header">
+            {{ block "header" . }}{{ T "Viewing: %s" .Data.object.Object.Identifier }}{{ end }}
+        </div>
+
+        {{ if not .Data.can_view }}
+            <div class="alert-container alert alert-danger">
+                <h2>{{ T "Womp womp" }}</h2>
+                <p>{{ T "You cannot view a service password/token for longer than 10 minutes after creation." }}</p>
+                <p>{{ T "If you do not remember the password/token, <strong>please re-generate a new one.</strong>" | safe }}</p>
+            </div>
+        {{ else }}
+            <div class="alert-container alert alert-info">
+                <h2>{{ T "Beware!" }}</h2>
+                <p>{{ T "You cannot view a service password/token for longer than 10 minutes after creation." }}</p>
+                <p>{{ T "If you do not remember the password/token in the future, <strong>please re-generate a new one.</strong>" | safe }}</p>
+            </div>
+        {{ end }}
+
+        <div class="mailmgmt-content">
+            {{ if .Data.can_view }}
+                <p><strong>{{ T "Current Password/token:" }}</strong></p>
+                <input type="text" readonly="true" value="{{ .Data.object.Object.Token }}" class="form-control accented medium">
+            {{ end }}
+
+            <div class="mailmgmt-meta">
+                <p><strong>{{ T "Created At:" }}</strong>{{ .Data.createdAt }}</p>
+                <p><strong>{{ T "Last Renewed:" }}</strong>{{ .Data.regeneratedAt }}</p>
+            </div>
+
+            <form method="POST" class="mailmgmt-detail-fields mt-4">
+                {{ csrf_field }}
+
+                {{ include .Data.object.Form.BoundForm "mailmgmt/partials/form.tmpl" }}
+
+                <a href="{{ url "mailmgmt:services" }}" class="btn btn-standout btn-standalone m-0">
+                    {{ T "Back" }}
+                </a>
+
+                <button type="submit" class="btn btn-warning btn-standalone m-0">
+                    {{ T "Regenerate Token" }}
+                </button>
+            </form>
+        </div>
+    </div>
+{{ end }}
+

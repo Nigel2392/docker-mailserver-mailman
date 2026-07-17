@@ -29,6 +29,10 @@ type domainBooleanColumn struct {
 
 func (d *domainBooleanColumn) Attributes(r *http.Request, defs attrs.Definitions, row *Domain, colIndex, colCount int) map[string]any {
 
+	if !authentication.Retrieve(r).IsAdmin() {
+		return map[string]any{}
+	}
+
 	if row.IsActive {
 		return map[string]any{
 			"class":                        "domain-list-activity-button w-10",
@@ -129,6 +133,10 @@ var ViewDomains = &list.View[*Domain]{
 			"IsActive",
 		)},
 		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *Domain) template.HTML {
+			if !authentication.Retrieve(r).IsAdmin() {
+				return ""
+			}
+
 			var html = `<div class="mailmgmt-list-item-actions">
                 <a href="%s" class="mailmgmt-action-button mailmgmt-action-delete">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="mailmgmt-action-icon" viewBox="0 0 16 16" data-controller="tooltip" data-tooltip-content-value="%s" data-tooltip-placement-value="bottom">

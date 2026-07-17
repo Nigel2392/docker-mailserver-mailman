@@ -1,0 +1,7 @@
+{{ template "delete_form" . }}
+
+{{ define "header" }}
+    {{ $obj := (.Get "view.object") }}
+    {{ T "Delete Service Account: %q" $obj.Identifier }}
+{{ end }}
+

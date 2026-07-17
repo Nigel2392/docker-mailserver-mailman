@@ -167,7 +167,6 @@ table.list td:nth-child(2) {
     text-align: left;
     width: 25%;
 }
-
 table.list td:nth-child(2) {
     text-wrap: nowrap;
     text-overflow: ellipsis;
@@ -175,9 +174,11 @@ table.list td:nth-child(2) {
     width: inherit;
 }
 
+.mailmgmt-service-account-list table.list th:nth-child(2),
+.mailmgmt-service-account-list table.list td:nth-child(2),
 table.list th:nth-child(3),
 table.list td:nth-child(3) {
-    width: 3rem;
+    width: 8rem;
     text-align: center;
 }
 table.list th:nth-child(4),
@@ -196,6 +197,14 @@ table.list th:last-child,
 table.list td:last-child {
     text-align: right;
     padding-inline-end: 0.5rem;
+    max-width: fit-content
+}
+.mailmgmt-service-account-list table.list th:nth-child(2),
+.mailmgmt-service-account-list table.list td:nth-child(2),
+.mailmgmt-service-account-list table.list th:nth-child(3),
+.mailmgmt-service-account-list table.list td:nth-child(3) {
+    text-align: left;
+    width: 20%;
 }
 .mailmgmt-list-table--head {
     text-align: left;

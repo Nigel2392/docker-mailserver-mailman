@@ -134,6 +134,11 @@ var ViewEmails = &list.View[*auth.User]{
 		//		"LastLogin",
 		//	),
 		list.HTMLColumn(trans.S("Actions"), func(r *http.Request, defs attrs.Definitions, row *auth.User) template.HTML {
+
+			if !authentication.Retrieve(r).IsAdmin() {
+				return ""
+			}
+
 			var html = `<div class="mailmgmt-list-item-actions">
 		        <button class="mailmgmt-action-button mailmgmt-action-alias"
 		            hx-get="%s"
@@ -658,6 +663,21 @@ var ViewDeleteEmail = &DeleteView[*UserMailProfile]{
 		return hc, nil
 	},
 	Delete: func(bdv *BoundDeleteView[*UserMailProfile], r *http.Request, la *UserMailProfile) (err error) {
-		return la.Delete(r.Context())
+		ctx, tx, err := queries.StartTransaction(r.Context())
+		if err != nil {
+			return err
+		}
+
+		defer tx.Rollback(ctx)
+
+		if err = la.Delete(ctx); err != nil {
+			return err
+		}
+
+		if err := la.User.Delete(ctx); err != nil {
+			return err
+		}
+
+		return tx.Commit(ctx)
 	},
 }

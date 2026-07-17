@@ -20,12 +20,18 @@ auth_cache_negative_ttl = 5mins
 plugin {
   quota = count:User quota
   quota_vsizes = yes
+  
+  # Tell Postfix to ignore quota checks for unknown addresses (aliases)
+  quota_status_success = DUNNO
+  quota_status_nouser = DUNNO
+  quota_status_overquota = "552 5.2.2 Mailbox is full"
 }
+
 
 # HTTP API for the mailman backend
 service doveadm {
   inet_listener http {
-    port = 8080
+    port = %{env:DOVECOT_DOVEADM_API_PORT | default(8080)}
   }
 }
 

@@ -1,0 +1,25 @@
+{{ template "skeleton" . }}
+
+{{ define "title" }}{{ T "Service Account List" }}{{ end }}
+
+{{ define "css" }}
+    <link rel="stylesheet" href="{{ static "mailmgmt/css/mailmgmt.css" }}">
+{{ end }}
+
+{{ define "content" }}
+    <div class="mailmgmt-list" data-controller="table-list">
+        {{ include . "" "mailmgmt/partials/list_form.tmpl" "mailmgmt/services/partials/account_list_form.tmpl" }}
+
+        <div class="mailmgmt-list-table-wrapper mailmgmt-service-account-list">
+            {{ $list := (.Get "view_list") }}
+            {{ safe $list.Render }}
+        </div>
+
+        <div class="mailmgmt-paginator-container">
+            <div id="mailmgmt-paginator" class="mailmgmt-list-paginator">
+                {{ (.Get "view_paginator_object").HTML "page" 5 .Request.URL.Query }}
+            </div>
+        </div>
+
+    </div>
+{{ end }}

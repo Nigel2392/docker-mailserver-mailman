@@ -3,9 +3,15 @@ package mailmgmt
 import "github.com/Nigel2392/errors"
 
 const (
-	CodeDockerError errors.GoCode = "DockerError"
+	CodeAPIError       errors.GoCode = "APIError"
+	CodeDockerError    errors.GoCode = "DockerError"
+	CodeQuotaError     errors.GoCode = "QuotaError"
+	CodeQuotaNotExists errors.GoCode = "QuotaNotExists"
 )
 
 var (
-	ErrDocker = errors.New(CodeDockerError, "error while interacting with docker client")
+	ErrAPI            = errors.New(CodeAPIError, "error while interacting with API")
+	ErrDocker         = errors.New(CodeDockerError, "error while interacting with docker client")
+	ErrQuota          = errors.New(CodeQuotaError, "error while fetching quota")
+	ErrQuotaNotExists = errors.New(CodeQuotaNotExists, "quota does not exist")
 )
